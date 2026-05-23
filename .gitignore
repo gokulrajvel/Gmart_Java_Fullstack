@@ -1,0 +1,11 @@
+# Ignore everything in the root directory by default
+/*
+
+# Allow tracking of this .gitignore file itself
+!/.gitignore
+
+# Allow tracking of the Maven configuration file
+!/pom.xml
+
+# Allow tracking of all source code files under the src directory
+!/src/

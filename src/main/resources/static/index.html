@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script>
+        (function() {
+            try {
+                const savedTheme = localStorage.getItem('theme') || 'dark';
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GMart - Secure Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="auth-page">
+    <!-- Global Loading Overlay -->
+    <div id="globalLoader" class="loading-overlay">
+        <div class="loader-container">
+            <div class="premium-spinner"></div>
+            <div id="globalLoaderText" class="loader-text">Loading GMart...</div>
+        </div>
+    </div>
+
+    <button id="themeToggleBtn" class="btn" style="position: absolute; top: 1.5rem; right: 1.5rem; padding: 0.5rem; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-main); cursor: pointer; transition: var(--transition); z-index: 100;" title="Toggle Theme">
+        <i class="fas fa-sun" id="themeIcon"></i>
+    </button>
+    <div class="auth-card">
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <div style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem; filter: drop-shadow(0 0 10px rgba(59,130,246,0.3));">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <h2 style="margin-bottom: 0.5rem; font-size: 1.75rem;">Welcome to GMart</h2>
+            <p style="color: var(--text-muted); font-size: 0.875rem;">Enterprise Resource Planning System</p>
+        </div>
+
+        <!-- Corrected error block: hidden by default and matching CSS theme -->
+        <div id="error" class="error-message" style="display: none; background: rgba(244, 63, 94, 0.15); color: #fb7185; padding: 0.85rem; border-radius: 0.75rem; border: 1px solid rgba(244, 63, 94, 0.35); margin-bottom: 1.5rem; font-size: 0.85rem; text-align: center; font-weight: 500;"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <div style="position: relative;">
+                    <i class="fas fa-user" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none;"></i>
+                    <input type="text" id="username" placeholder="Enter username" required style="padding-left: 2.75rem;">
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 2rem;">
+                <label for="password">Password</label>
+                <div style="position: relative;">
+                    <i class="fas fa-lock" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none;"></i>
+                    <input type="password" id="password" placeholder="••••••••" required style="padding-left: 2.75rem;">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; display: flex; justify-content: center; align-items: center;">
+                Sign In <i class="fas fa-arrow-right" style="margin-left: 0.5rem;"></i>
+            </button>
+        </form>
+
+        <div style="margin-top: 2.5rem; text-align: center; font-size: 0.75rem; color: var(--text-muted);">
+            &copy; 2026 GMart Full Stack. Secure Terminal.
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>

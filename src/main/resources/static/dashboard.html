@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script>
+        (function() {
+            try {
+                const savedTheme = localStorage.getItem('theme') || 'dark';
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GMart ERP - Enterprise Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Global Loading Overlay -->
+    <div id="globalLoader" class="loading-overlay">
+        <div class="loader-container">
+            <div class="premium-spinner"></div>
+            <div id="globalLoaderText" class="loader-text">Loading GMart...</div>
+        </div>
+    </div>
+
+    <!-- Custom Toast Alert -->
+    <div id="toast" class="hidden"></div>
+
+    <div class="dashboard-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-shopping-cart" style="color: var(--primary);"></i> <span>GMart</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a id="nav-overview" class="nav-item active" onclick="showSection('overview')">
+                    <i class="fas fa-chart-line"></i> <span>Overview</span>
+                </a>
+                <a id="nav-inventory" class="nav-item" onclick="showSection('inventory')">
+                    <i class="fas fa-boxes-stacked"></i> <span>Inventory</span>
+                </a>
+                <a id="nav-suppliers" class="nav-item" onclick="showSection('suppliers')">
+                    <i class="fas fa-truck-ramp-box"></i> <span>Suppliers</span>
+                </a>
+                <a id="nav-users" class="nav-item" onclick="showSection('users')">
+                    <i class="fas fa-user-gear"></i> <span>Employees</span>
+                </a>
+                <a id="nav-billing" class="nav-item" onclick="showSection('billing')">
+                    <i class="fas fa-cash-register"></i> <span>Point of Sale</span>
+                </a>
+                <a id="nav-transactions" class="nav-item" onclick="showSection('transactions')">
+                    <i class="fas fa-file-lines"></i> <span>History</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <a class="nav-item" onclick="logout()">
+                    <i class="fas fa-arrow-right-from-bracket"></i> <span>Sign Out</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Header bar -->
+            <header class="main-header">
+                <h1 id="sectionTitle" style="font-size: 1.6rem; margin-bottom: 0;">Dashboard Overview</h1>
+                <div style="display: flex; align-items: center;">
+                    <button id="themeToggleBtn" class="btn" style="padding: 0.5rem; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-main); cursor: pointer; transition: var(--transition); margin-right: 1.5rem;" title="Toggle Theme">
+                        <i class="fas fa-sun" id="themeIcon"></i>
+                    </button>
+                    <div class="user-info">
+                        <div style="text-align: right; margin-right: 0.5rem;">
+                            <div id="userName" style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Admin</div>
+                            <div id="userRoleBadge" class="badge badge-success" style="font-size: 0.65rem; margin-top: 0.25rem;">ADMIN</div>
+                        </div>
+                        <div class="user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 1. Overview Section -->
+            <section id="overviewSection">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div>
+                            <div class="stat-label">Stock SKUs</div>
+                            <div id="totalProducts" class="stat-value">0</div>
+                        </div>
+                        <i class="fas fa-box" style="position: absolute; right: 1.5rem; bottom: 1.5rem; font-size: 2.25rem; opacity: 0.15; color: var(--primary);"></i>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <div class="stat-label">Critical Alerts</div>
+                            <div id="lowStockCount" class="stat-value" style="color: var(--danger);">0</div>
+                        </div>
+                        <i class="fas fa-triangle-exclamation" style="position: absolute; right: 1.5rem; bottom: 1.5rem; font-size: 2.25rem; opacity: 0.15; color: var(--danger);"></i>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <div class="stat-label">Active Suppliers</div>
+                            <div id="totalSuppliers" class="stat-value">0</div>
+                        </div>
+                        <i class="fas fa-truck" style="position: absolute; right: 1.5rem; bottom: 1.5rem; font-size: 2.25rem; opacity: 0.15; color: var(--success);"></i>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <div class="stat-label">Total Transactions</div>
+                            <div id="totalTransactions" class="stat-value">0</div>
+                        </div>
+                        <i class="fas fa-arrow-right-arrow-left" style="position: absolute; right: 1.5rem; bottom: 1.5rem; font-size: 2.25rem; opacity: 0.15; color: var(--warning);"></i>
+                    </div>
+                </div>
+                
+                <div class="card" style="border-left: 4px solid var(--primary);">
+                    <h3><i class="fas fa-network-wired" style="color: var(--primary);"></i> System Connection</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                        Backend REST Connection: <strong style="color: var(--text-main);">Active</strong>
+                    </p>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0;">
+                        Database Engine: <strong style="color: var(--text-main);">Synchronized (JPA)</strong>
+                    </p>
+                </div>
+            </section>
+
+            <!-- 2. Inventory Section -->
+            <section id="inventorySection" class="hidden">
+                <div class="flex-between" style="margin-bottom: 1.5rem;">
+                    <h3><i class="fas fa-boxes-stacked" style="color: var(--primary);"></i> Product Catalog</h3>
+                    <button class="btn btn-primary" onclick="showModal('productModal')">
+                        <i class="fas fa-plus"></i> New Product
+                    </button>
+                </div>
+                <div class="card table-container" style="padding: 0;">
+                    <table id="productTable">
+                        <thead>
+                            <tr>
+                                <th>SKU</th>
+                                <th>Name</th>
+                                <th>Supplier</th>
+                                <th>Price</th>
+                                <th>Stock</th>
+                                <th>Status</th>
+                                <th style="text-align: right;">Quick Adjustments</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 3. Suppliers Section -->
+            <section id="suppliersSection" class="hidden">
+                <div class="flex-between" style="margin-bottom: 1.5rem;">
+                    <h3><i class="fas fa-truck-ramp-box" style="color: var(--primary);"></i> Vendor Directory</h3>
+                    <button class="btn btn-primary" onclick="openNewSupplierModal()">
+                        <i class="fas fa-plus"></i> New Supplier
+                    </button>
+                </div>
+                <div class="card table-container" style="padding: 0;">
+                    <table id="supplierTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Contact Information</th>
+                                <th style="text-align: right; padding-right: 2rem;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 4. Employee Management Section -->
+            <section id="usersSection" class="hidden">
+                <div class="flex-between" style="margin-bottom: 1.5rem;">
+                    <h3><i class="fas fa-user-gear" style="color: var(--primary);"></i> System Personnel</h3>
+                    <button class="btn btn-primary" onclick="showModal('userModal')">
+                        <i class="fas fa-user-plus"></i> New Employee
+                    </button>
+                </div>
+                <div class="card table-container" style="padding: 0;">
+                    <table id="userTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>System Role</th>
+                                <th style="text-align: right; padding-right: 2rem;">Permissions & Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 5. Point of Sale (Billing) -->
+            <section id="billingSection" class="hidden">
+                <div class="flex-between" style="gap: 2rem; align-items: stretch; flex-wrap: wrap;">
+                    <!-- Cart List -->
+                    <div class="card" style="flex: 2; min-width: 320px;">
+                        <div class="flex-between" style="margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                            <h3 style="margin-bottom: 0;"><i class="fas fa-cart-plus" style="color: var(--primary);"></i> Current Cart</h3>
+                            <div class="flex-between" style="gap: 0.75rem;">
+                                <input type="text" id="billingSkuInput" placeholder="Enter SKU (e.g. ELEC-01)..." style="width: 220px; padding: 0.5rem 0.75rem;">
+                                <button class="btn btn-primary" onclick="addToCartBySku()" style="padding: 0.5rem 1rem;">Add</button>
+                            </div>
+                        </div>
+                        <div class="table-container" style="border: none;">
+                            <table id="cartTable">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Price</th>
+                                        <th style="width: 100px;">Qty</th>
+                                        <th>Subtotal</th>
+                                        <th style="text-align: right;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Checkout Summary -->
+                    <div class="card" style="flex: 1; min-width: 280px; background: var(--bg-summary-card); border-color: var(--border-summary-card);">
+                        <h3 style="border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;"><i class="fas fa-receipt" style="color: var(--primary);"></i> Checkout Summary</h3>
+                        
+                        <div style="margin: 1.5rem 0;">
+                            <div class="pos-summary-item">
+                                <span style="color: var(--text-muted);">Subtotal</span>
+                                <span id="cartSubtotal" style="font-weight: 500;">₹0.00</span>
+                            </div>
+                            <div class="pos-summary-item">
+                                <span style="color: var(--text-muted);">Tax (5.0%)</span>
+                                <span id="cartTax" style="font-weight: 500;">₹0.00</span>
+                            </div>
+                            <div style="height: 1px; background: var(--border-color); margin: 1rem 0;"></div>
+                            <div class="pos-summary-item" style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);">
+                                <span>Total Due</span>
+                                <span id="cartTotal" style="color: var(--primary); text-shadow: 0 0 10px rgba(59,130,246,0.2);">₹0.00</span>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group" style="margin-bottom: 2rem;">
+                            <label>Payment Mode</label>
+                            <select id="paymentMethod">
+                                <option value="CASH">Cash</option>
+                                <option value="CARD">Debit / Credit Card</option>
+                                <option value="UPI">UPI Transfer</option>
+                            </select>
+                        </div>
+
+                        <button class="btn btn-primary" style="width: 100%; padding: 0.9rem;" onclick="finalizeSale()">
+                            <i class="fas fa-check-double"></i> Complete Checkout
+                        </button>
+                        <button class="btn btn-danger" style="width: 100%; padding: 0.75rem; margin-top: 0.75rem; background: transparent; border: 1px solid var(--danger); color: var(--danger); box-shadow: none;" onclick="clearCart()">
+                            Cancel Transaction
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. History Section (Transactions Log) -->
+            <section id="transactionsSection" class="hidden">
+                <h3 style="margin-bottom: 1.5rem;"><i class="fas fa-file-invoice" style="color: var(--primary);"></i> Inventory Movement Log</h3>
+                <div class="card table-container" style="padding: 0;">
+                    <table id="transactionTable">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Product Item</th>
+                                <th>Handled By</th>
+                                <th>Type</th>
+                                <th>Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODALS -->
+    <!-- Add Product Modal -->
+    <div id="productModal" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <h3><i class="fas fa-box-open" style="color: var(--primary); margin-right: 0.5rem;"></i> Register New Product</h3>
+            <form id="productForm">
+                <div class="form-group">
+                    <label for="sku">SKU Code</label>
+                    <input type="text" id="sku" placeholder="e.g. ELEC-MOU-01" required>
+                </div>
+                <div class="form-group">
+                    <label for="pname">Product Name</label>
+                    <input type="text" id="pname" placeholder="e.g. Ergonomic Wireless Mouse" required>
+                </div>
+                <div class="form-group">
+                    <label for="price">Price (₹)</label>
+                    <input type="number" step="0.01" min="0.01" id="price" placeholder="e.g. 29.99" required>
+                </div>
+                <div class="form-group">
+                    <label for="stock">Initial Stock Quantity</label>
+                    <input type="number" min="0" id="stock" value="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="psupplier">Supplier</label>
+                    <select id="psupplier" required>
+                        <option value="" disabled selected>Select Supplier</option>
+                    </select>
+                </div>
+                <div class="flex-between" style="gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn btn-danger" onclick="hideModal('productModal')" style="flex: 1; background: transparent; border: 1px solid var(--danger); color: var(--danger); box-shadow: none;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Employee Modal -->
+    <div id="userModal" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <h3><i class="fas fa-user-plus" style="color: var(--primary); margin-right: 0.5rem;"></i> Register New Employee</h3>
+            <form id="userForm">
+                <div class="form-group">
+                    <label for="u_username">Username</label>
+                    <input type="text" id="u_username" placeholder="e.g. johndoe" required>
+                </div>
+                <div class="form-group">
+                    <label for="u_password">Security Password</label>
+                    <input type="password" id="u_password" placeholder="••••••••" required>
+                </div>
+                <div class="form-group">
+                    <label for="u_role">System Access Role</label>
+                    <select id="u_role" required>
+                        <option value="ADMIN">ADMIN (Full Permissions)</option>
+                        <option value="BILLING_STAFF">BILLING STAFF (POS Access Only)</option>
+                        <option value="WAREHOUSE">WAREHOUSE (Stock Control Only)</option>
+                        <option value="PURCHASING_MANAGER">PURCHASING MANAGER (Suppliers & Reports)</option>
+                    </select>
+                </div>
+                <div class="flex-between" style="gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn btn-danger" onclick="hideModal('userModal')" style="flex: 1; background: transparent; border: 1px solid var(--danger); color: var(--danger); box-shadow: none;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Create Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Supplier Modal -->
+    <div id="supplierModal" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <h3 id="supplierModalTitle"><i class="fas fa-truck-moving" style="color: var(--primary); margin-right: 0.5rem;"></i> Register New Supplier</h3>
+            <form id="supplierForm">
+                <input type="hidden" id="s_id">
+                <div class="form-group">
+                    <label for="s_name">Supplier / Vendor Name</label>
+                    <input type="text" id="s_name" placeholder="e.g. Apex Global Distributors" required>
+                </div>
+                <div class="form-group">
+                    <label for="s_contact">Contact Information</label>
+                    <textarea id="s_contact" rows="3" placeholder="Address, telephone, contact email..." required></textarea>
+                </div>
+                <div class="flex-between" style="gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn btn-danger" onclick="hideModal('supplierModal')" style="flex: 1; background: transparent; border: 1px solid var(--danger); color: var(--danger); box-shadow: none;">Cancel</button>
+                    <button type="submit" id="supplierSubmitBtn" class="btn btn-primary" style="flex: 1;">Save Vendor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
