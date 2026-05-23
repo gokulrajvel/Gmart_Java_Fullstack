@@ -29,6 +29,28 @@
         </div>
     </div>
 
+    <!-- Checkout Confirmation Modal -->
+    <div id="checkoutConfirmModal" class="checkout-confirm-overlay">
+        <div class="checkout-confirm-card">
+            <div class="confirm-header">
+                <i class="fas fa-file-invoice-dollar" style="color: var(--primary); font-size: 1.8rem;"></i>
+                <h2>Confirm Bill Details</h2>
+            </div>
+            <div class="confirm-body">
+                <div id="confirmBillItems">
+                    <!-- Dynamic list of items with price, discount, and GST details -->
+                </div>
+                <div class="confirm-totals-box" id="confirmBillTotals">
+                    <!-- Subtotal, Total Discount, Total GST, Grand Total -->
+                </div>
+            </div>
+            <div class="confirm-actions">
+                <button class="btn btn-secondary btn-deny" onclick="closeConfirmModal()">Deny</button>
+                <button class="btn btn-primary btn-proceed" onclick="executeCheckout()">Proceed</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Checkout Success Animated Popup Overlay -->
     <div id="checkoutSuccessModal" class="checkout-success-overlay">
         <div class="checkout-success-card">

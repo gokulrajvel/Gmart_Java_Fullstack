@@ -148,6 +148,7 @@ function showSection(sectionId) {
 }
 
 let currentCart = [];
+let pendingBillData = null;
 
 async function addToCartBySku() {
     const skuInput = document.getElementById('billingSkuInput');
@@ -270,25 +271,55 @@ async function finalizeSale() {
     }
 
     const user = getSessionUser();
+    if (!user) {
+        showToast('Session expired, please login again', 'error');
+        return;
+    }
+
     let subtotal = 0;
     let totalDiscount = 0;
     let totalTax = 0;
+    let confirmItemsHTML = '';
 
     currentCart.forEach(item => {
         const baseVal = item.product.price * item.quantity;
-        const discVal = baseVal * ((item.product.discount || 0) / 100);
-        const finalVal = baseVal - discVal;
-        const taxVal = finalVal * ((item.product.gst || 0) / 100);
+        const discountPct = item.product.discount || 0;
+        const discVal = baseVal * (discountPct / 100);
+        const taxableVal = baseVal - discVal;
+        const gstPct = item.product.gst || 0;
+        const taxVal = taxableVal * (gstPct / 100);
+        const finalItemVal = taxableVal + taxVal;
 
         subtotal += baseVal;
         totalDiscount += discVal;
         totalTax += taxVal;
+
+        // Render confirm item row with base, gst, offer/discount explicitly detailed
+        confirmItemsHTML += `
+            <div class="confirm-item-row">
+                <div class="confirm-item-title">
+                    <span>${item.product.name}</span>
+                    <span>₹${finalItemVal.toFixed(2)}</span>
+                </div>
+                <div class="confirm-item-details">
+                    <span>Base: ₹${item.product.price.toFixed(2)} × ${item.quantity} = ₹${baseVal.toFixed(2)}</span>
+                    <span style="color: var(--success); font-weight: 500;">
+                        ${discountPct > 0 ? `Offer (-${discountPct}%): -₹${discVal.toFixed(2)}` : 'No Offer'}
+                    </span>
+                </div>
+                <div class="confirm-item-details" style="margin-top: 0.1rem;">
+                    <span>GST: ${gstPct}% (+₹${taxVal.toFixed(2)})</span>
+                    <span>Taxable: ₹${taxableVal.toFixed(2)}</span>
+                </div>
+            </div>
+        `;
     });
 
     const total = subtotal - totalDiscount + totalTax;
     const paymentMethod = document.getElementById('paymentMethod').value;
 
-    const bill = {
+    // Create the final bill payload structure
+    pendingBillData = {
         userId: user.id,
         totalAmount: total,
         taxAmount: totalTax,
@@ -306,11 +337,78 @@ async function finalizeSale() {
         })
     };
 
+    // Render confirm totals box
+    const confirmTotalsHTML = `
+        <div class="confirm-total-row">
+            <span>Items Base Total</span>
+            <span>₹${subtotal.toFixed(2)}</span>
+        </div>
+        <div class="confirm-total-row" style="color: var(--success); font-weight: 500;">
+            <span>Offers & Discounts</span>
+            <span>-₹${totalDiscount.toFixed(2)}</span>
+        </div>
+        <div class="confirm-total-row">
+            <span>GST Tax Amount</span>
+            <span>+₹${totalTax.toFixed(2)}</span>
+        </div>
+        <div class="confirm-total-row grand-total">
+            <span>Total Payable Amount</span>
+            <span>₹${total.toFixed(2)}</span>
+        </div>
+    `;
+
+    // Populate modal and show
+    document.getElementById('confirmBillItems').innerHTML = confirmItemsHTML;
+    document.getElementById('confirmBillTotals').innerHTML = confirmTotalsHTML;
+
+    const confirmModal = document.getElementById('checkoutConfirmModal');
+    if (confirmModal) {
+        confirmModal.classList.add('active');
+    }
+}
+
+function closeConfirmModal() {
+    const confirmModal = document.getElementById('checkoutConfirmModal');
+    if (confirmModal) {
+        confirmModal.classList.remove('active');
+    }
+    pendingBillData = null;
+}
+
+async function executeCheckout() {
+    if (!pendingBillData) {
+        showToast('No pending checkout found', 'error');
+        return;
+    }
+
+    const user = getSessionUser();
+    if (!user) {
+        showToast('Session expired, please login again', 'error');
+        return;
+    }
+
+    // Build the final bill payload including employee/user metadata
+    const finalBill = {
+        employeeId: user.id,
+        employeeName: user.name,
+        paymentMethod: pendingBillData.paymentMethod,
+        billDetails: pendingBillData.billItems
+    };
+
+    // Store a copy of currentCart locally in case we clear it before loop finishes
+    const cartToRecord = [...currentCart];
+
+    // Close confirm modal immediately to give snappy response
+    const confirmModal = document.getElementById('checkoutConfirmModal');
+    if (confirmModal) {
+        confirmModal.classList.remove('active');
+    }
+
     try {
-        await api.createBill(bill);
+        await api.createBill(finalBill);
         
         // Record transactions for each item
-        for (const item of currentCart) {
+        for (const item of cartToRecord) {
             await api.recordTransaction({
                 productId: item.product.id,
                 userId: user.id,
@@ -331,6 +429,8 @@ async function finalizeSale() {
         updateStats();
     } catch (e) {
         showToast('Failed to finalize sale: ' + e.message, 'error');
+    } finally {
+        pendingBillData = null;
     }
 }
 
