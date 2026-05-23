@@ -9,3 +9,4 @@
 
 # Allow tracking of all source code files under the src directory
 !/src/
+!/README.md/
