@@ -29,7 +29,7 @@ public class GmartDB {
 
     private void initializeDatabase() {
         String[] queries = {
-            "CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL, role ENUM('ADMIN', 'BILLING_STAFF', 'WAREHOUSE', 'PURCHASING_MANAGER') NOT NULL)",
+            "CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL, role ENUM('ADMIN', 'BILLING_STAFF', 'WAREHOUSE', 'PURCHASING_MANAGER') NOT NULL, address VARCHAR(255), phone VARCHAR(50), aadhar_no VARCHAR(50))",
             "INSERT IGNORE INTO users (username, password, role) VALUES ('admin', 'admin123', 'ADMIN')",
             "CREATE TABLE IF NOT EXISTS categories (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE)",
             "CREATE TABLE IF NOT EXISTS suppliers (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, contact_info TEXT)",

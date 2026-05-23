@@ -539,11 +539,13 @@ async function stockAdjust(productId, change) {
     }
 }
 
+let usersList = [];
+
 async function loadUsers() {
     const tbody = document.querySelector('#userTable tbody');
-    const users = await api.getUsers();
+    usersList = await api.getUsers();
     
-    tbody.innerHTML = users.map(u => {
+    tbody.innerHTML = usersList.map(u => {
         let badgeClass = 'badge-success';
         if (u.role === 'BILLING_STAFF') badgeClass = 'badge-warning';
         if (u.role === 'WAREHOUSE') badgeClass = 'badge-danger';
@@ -553,10 +555,15 @@ async function loadUsers() {
                 <td>#${u.id}</td>
                 <td><strong style="color: var(--text-main);">${u.username}</strong></td>
                 <td><span class="badge ${badgeClass}">${u.role}</span></td>
+                <td>${u.address || '<span style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">Not Set</span>'}</td>
+                <td>${u.phone || '<span style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">Not Set</span>'}</td>
+                <td>${u.aadharNo || '<span style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">Not Set</span>'}</td>
                 <td style="text-align: right; padding-right: 2rem;">
-                    <div style="display: inline-flex; align-items: center; gap: 1rem;">
-                        <span style="font-size: 0.85rem; color: var(--success);"><i class="fas fa-check-circle" style="margin-right: 0.35rem;"></i>Verified</span>
-                        <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})" title="Remove Employee" style="padding: 0.35rem 0.6rem; border-radius: 0.5rem; background: rgba(244, 63, 94, 0.15); color: var(--danger); box-shadow: none;">
+                    <div style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <button class="btn btn-sm btn-primary" onclick="openEditUserModal(${u.id})" title="Edit Employee" style="padding: 0.35rem 0.6rem; border-radius: 0.5rem; background: rgba(59, 130, 246, 0.15); color: var(--primary); box-shadow: none; border: 1px solid rgba(59, 130, 246, 0.2);">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})" title="Remove Employee" style="padding: 0.35rem 0.6rem; border-radius: 0.5rem; background: rgba(244, 63, 94, 0.15); color: var(--danger); box-shadow: none; border: 1px solid rgba(244, 63, 94, 0.2);">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -575,6 +582,39 @@ async function deleteUser(id) {
     } catch (e) {
         showToast('Failed to remove employee: ' + e.message, 'error');
     }
+}
+
+function openNewUserModal() {
+    document.getElementById('u_id').value = '';
+    document.getElementById('u_username').value = '';
+    document.getElementById('u_username').disabled = false;
+    document.getElementById('u_password').value = '';
+    document.getElementById('u_role').value = 'ADMIN';
+    document.getElementById('u_address').value = '';
+    document.getElementById('u_phone').value = '';
+    document.getElementById('u_aadhar').value = '';
+
+    document.getElementById('userModalTitle').innerHTML = '<i class="fas fa-user-plus" style="color: var(--primary); margin-right: 0.5rem;"></i> Register New Employee';
+    document.getElementById('userSubmitBtn').textContent = 'Create Account';
+    showModal('userModal');
+}
+
+function openEditUserModal(userId) {
+    const user = usersList.find(u => u.id === userId);
+    if (!user) return;
+
+    document.getElementById('u_id').value = user.id;
+    document.getElementById('u_username').value = user.username;
+    document.getElementById('u_username').disabled = true; // prevent username editing to avoid unique constraint issues
+    document.getElementById('u_password').value = user.password;
+    document.getElementById('u_role').value = user.role;
+    document.getElementById('u_address').value = user.address || '';
+    document.getElementById('u_phone').value = user.phone || '';
+    document.getElementById('u_aadhar').value = user.aadharNo || '';
+
+    document.getElementById('userModalTitle').innerHTML = '<i class="fas fa-edit" style="color: var(--primary); margin-right: 0.5rem;"></i> Edit Employee Details';
+    document.getElementById('userSubmitBtn').textContent = 'Save Changes';
+    showModal('userModal');
 }
 
 let suppliersList = [];
@@ -767,15 +807,22 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
 
 document.getElementById('userForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const idVal = document.getElementById('u_id').value;
     const user = {
         username: document.getElementById('u_username').value,
         password: document.getElementById('u_password').value,
-        role: document.getElementById('u_role').value
+        role: document.getElementById('u_role').value,
+        address: document.getElementById('u_address').value,
+        phone: document.getElementById('u_phone').value,
+        aadharNo: document.getElementById('u_aadhar').value
     };
+    if (idVal) {
+        user.id = parseInt(idVal);
+    }
 
     try {
         await api.saveUser(user);
-        showToast('Employee account created');
+        showToast(idVal ? 'Employee details updated' : 'Employee account created');
         hideModal('userModal');
         loadUsers();
         e.target.reset();

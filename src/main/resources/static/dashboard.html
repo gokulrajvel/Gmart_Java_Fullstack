@@ -221,7 +221,7 @@
             <section id="usersSection" class="hidden">
                 <div class="flex-between" style="margin-bottom: 1.5rem;">
                     <h3><i class="fas fa-user-gear" style="color: var(--primary);"></i> System Personnel</h3>
-                    <button class="btn btn-primary" onclick="showModal('userModal')">
+                    <button class="btn btn-primary" onclick="openNewUserModal()">
                         <i class="fas fa-user-plus"></i> New Employee
                     </button>
                 </div>
@@ -232,7 +232,10 @@
                                 <th>ID</th>
                                 <th>Username</th>
                                 <th>System Role</th>
-                                <th style="text-align: right; padding-right: 2rem;">Permissions & Actions</th>
+                                <th>Address</th>
+                                <th>Phone</th>
+                                <th>Aadhar No</th>
+                                <th style="text-align: right; padding-right: 2rem;">Actions</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -380,8 +383,9 @@
     <!-- Add Employee Modal -->
     <div id="userModal" class="modal-overlay" style="display: none;">
         <div class="modal-card">
-            <h3><i class="fas fa-user-plus" style="color: var(--primary); margin-right: 0.5rem;"></i> Register New Employee</h3>
+            <h3 id="userModalTitle"><i class="fas fa-user-plus" style="color: var(--primary); margin-right: 0.5rem;"></i> Register New Employee</h3>
             <form id="userForm">
+                <input type="hidden" id="u_id">
                 <div class="form-group">
                     <label for="u_username">Username</label>
                     <input type="text" id="u_username" placeholder="e.g. johndoe" required>
@@ -399,9 +403,21 @@
                         <option value="PURCHASING_MANAGER">PURCHASING MANAGER (Suppliers & Reports)</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label for="u_address">Address</label>
+                    <input type="text" id="u_address" placeholder="e.g. 123 Main St, Chennai" required>
+                </div>
+                <div class="form-group">
+                    <label for="u_phone">Phone Number</label>
+                    <input type="text" id="u_phone" placeholder="e.g. 9876543210" required>
+                </div>
+                <div class="form-group">
+                    <label for="u_aadhar">Aadhar Card Number</label>
+                    <input type="text" id="u_aadhar" placeholder="e.g. 1234 5678 9012" required>
+                </div>
                 <div class="flex-between" style="gap: 1rem; margin-top: 2rem;">
                     <button type="button" class="btn btn-danger" onclick="hideModal('userModal')" style="flex: 1; background: transparent; border: 1px solid var(--danger); color: var(--danger); box-shadow: none;">Cancel</button>
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Create Account</button>
+                    <button type="submit" id="userSubmitBtn" class="btn btn-primary" style="flex: 1;">Create Account</button>
                 </div>
             </form>
         </div>
