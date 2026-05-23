@@ -102,7 +102,7 @@ function showToast(message, type = 'success') {
 function applyRBAC(role) {
     const permissions = {
         'nav-overview': ['ADMIN', 'BILLING_STAFF', 'WAREHOUSE', 'PURCHASING_MANAGER'],
-        'nav-inventory': ['ADMIN', 'WAREHOUSE', 'PURCHASING_MANAGER'],
+        'nav-inventory': ['ADMIN', 'BILLING_STAFF', 'WAREHOUSE', 'PURCHASING_MANAGER'],
         'nav-suppliers': ['ADMIN', 'PURCHASING_MANAGER'],
         'nav-users': ['ADMIN'],
         'nav-billing': ['ADMIN', 'BILLING_STAFF'],
@@ -472,6 +472,7 @@ async function loadInventory() {
 
     const user = getSessionUser();
     const isAdmin = user && user.role === 'ADMIN';
+    const isBillingStaff = user && user.role === 'BILLING_STAFF';
 
     // Hide or show New Product button based on ADMIN role
     const newProductBtn = document.getElementById('newProductBtn');
@@ -484,7 +485,44 @@ async function loadInventory() {
         supplierMap[s.id] = s.name;
     });
 
+    const thead = document.querySelector('#productTable thead');
+    if (thead) {
+        if (isBillingStaff) {
+            thead.innerHTML = `
+                <tr>
+                    <th>SKU</th>
+                    <th>Name</th>
+                    <th>Amount</th>
+                </tr>
+            `;
+        } else {
+            thead.innerHTML = `
+                <tr>
+                    <th>SKU</th>
+                    <th>Name</th>
+                    <th>Supplier</th>
+                    <th>Price</th>
+                    <th>Discount</th>
+                    <th>GST</th>
+                    <th>Stock</th>
+                    <th>Status</th>
+                    <th style="text-align: right; padding-right: 2rem;">Actions</th>
+                </tr>
+            `;
+        }
+    }
+
     tbody.innerHTML = products.map(p => {
+        if (isBillingStaff) {
+            return `
+                <tr>
+                    <td><strong style="color: var(--text-main);">${p.skuCode}</strong></td>
+                    <td>${p.name}</td>
+                    <td>₹${p.price.toFixed(2)}</td>
+                </tr>
+            `;
+        }
+
         const supplierName = supplierMap[p.supplierId] || `Supplier #${p.supplierId || 'N/A'}`;
         
         const actionHtml = isAdmin 

@@ -19,7 +19,8 @@ public class DashboardView {
             System.out.println("\n--- GMart Inventory Management System ---");
             if (currentUser.getRole() == Role.BILLING_STAFF) {
                 System.out.println("1. Billing System");
-                System.out.println("2. Logout");
+                System.out.println("2. View Product Catalog");
+                System.out.println("3. Logout");
                 System.out.println("0. Exit");
             } else {
                 System.out.println("1. Stock Management");

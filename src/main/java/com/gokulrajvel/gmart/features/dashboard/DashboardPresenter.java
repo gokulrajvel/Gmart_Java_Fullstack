@@ -30,7 +30,8 @@ public class DashboardPresenter {
     private void handleBillingStaffChoice(int choice, User currentUser) {
         switch (choice) {
             case 1: new BillingView(currentUser).display(); break;
-            case 2: view.logout(); break;
+            case 2: new InventoryView(currentUser).display(); break;
+            case 3: view.logout(); break;
             case 0: view.exit(); break;
             default: view.showMessage("Invalid choice.");
         }
