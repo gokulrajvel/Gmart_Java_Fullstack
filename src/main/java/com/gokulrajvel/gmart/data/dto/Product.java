@@ -27,6 +27,12 @@ public class Product {
     @Column(name = "stock_quantity")
     private int stockQuantity;
 
+    @Column(nullable = false, columnDefinition = "double default 0.0")
+    private double discount = 0.0;
+
+    @Column(nullable = false, columnDefinition = "double default 0.0")
+    private double gst = 0.0;
+
     public Product() {}
 
     public Product(String skuCode, String name, Integer categoryId, Integer supplierId, double price, int stockQuantity) {
@@ -36,6 +42,8 @@ public class Product {
         this.supplierId = supplierId;
         this.price = price;
         this.stockQuantity = stockQuantity;
+        this.discount = 0.0;
+        this.gst = 0.0;
     }
 
     public Product(int id, String skuCode, String name, Integer categoryId, Integer supplierId, double price, int stockQuantity) {
@@ -46,6 +54,20 @@ public class Product {
         this.supplierId = supplierId;
         this.price = price;
         this.stockQuantity = stockQuantity;
+        this.discount = 0.0;
+        this.gst = 0.0;
+    }
+
+    public Product(int id, String skuCode, String name, Integer categoryId, Integer supplierId, double price, int stockQuantity, double discount, double gst) {
+        this.id = id;
+        this.skuCode = skuCode;
+        this.name = name;
+        this.categoryId = categoryId;
+        this.supplierId = supplierId;
+        this.price = price;
+        this.stockQuantity = stockQuantity;
+        this.discount = discount;
+        this.gst = gst;
     }
 
     public int getId() { return id; }
@@ -69,8 +91,14 @@ public class Product {
     public int getStockQuantity() { return stockQuantity; }
     public void setStockQuantity(int stockQuantity) { this.stockQuantity = stockQuantity; }
 
+    public double getDiscount() { return discount; }
+    public void setDiscount(double discount) { this.discount = discount; }
+
+    public double getGst() { return gst; }
+    public void setGst(double gst) { this.gst = gst; }
+
     @Override
     public String toString() {
-        return "Product{id=" + id + ", name='" + name + "', stock=" + stockQuantity + "}";
+        return "Product{id=" + id + ", name='" + name + "', stock=" + stockQuantity + ", discount=" + discount + ", gst=" + gst + "}";
     }
 }

@@ -181,29 +181,57 @@ async function addToCartBySku() {
 
 function updateCartUI() {
     const tbody = document.querySelector('#cartTable tbody');
-    tbody.innerHTML = currentCart.map((item, index) => `
+    tbody.innerHTML = currentCart.map((item, index) => {
+        const baseVal = item.product.price * item.quantity;
+        const discVal = baseVal * ((item.product.discount || 0) / 100);
+        const finalItemVal = baseVal - discVal;
+        const taxVal = finalItemVal * ((item.product.gst || 0) / 100);
+        const itemTotal = finalItemVal + taxVal;
+
+        return `
         <tr>
-            <td><strong style="color: var(--text-main);">${item.product.name}</strong></td>
+            <td>
+                <strong style="color: var(--text-main);">${item.product.name}</strong>
+                ${item.product.discount > 0 ? `<div style="font-size: 0.75rem; color: var(--success); font-weight: 500;"><i class="fas fa-tags"></i> ${item.product.discount}% Off</div>` : ''}
+                ${item.product.gst > 0 ? `<div style="font-size: 0.75rem; color: var(--text-muted);">GST (${item.product.gst}%)</div>` : ''}
+            </td>
             <td>₹${item.product.price.toFixed(2)}</td>
             <td>
                 <input type="number" value="${item.quantity}" min="1" max="${item.product.stockQuantity}" 
                     onchange="updateCartQuantity(${index}, this.value)" class="quantity-input">
             </td>
-            <td>₹${(item.product.price * item.quantity).toFixed(2)}</td>
+            <td>
+                <span style="font-weight: 600;">₹${itemTotal.toFixed(2)}</span>
+                ${discVal > 0 ? `<div style="font-size: 0.7rem; color: var(--text-muted); text-decoration: line-through;">₹${baseVal.toFixed(2)}</div>` : ''}
+            </td>
             <td style="text-align: right;">
                 <button class="btn btn-sm btn-danger" onclick="removeFromCart(${index})" style="padding: 0.35rem 0.6rem; border-radius: 0.5rem; background: transparent; border: 1px solid var(--danger); color: var(--danger); box-shadow: none;">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
         </tr>
-    `).join('');
+    `; }).join('');
 
-    const subtotal = currentCart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-    const tax = subtotal * 0.05;
-    const total = subtotal + tax;
+    let subtotal = 0;
+    let totalDiscount = 0;
+    let totalTax = 0;
+
+    currentCart.forEach(item => {
+        const baseVal = item.product.price * item.quantity;
+        const discVal = baseVal * ((item.product.discount || 0) / 100);
+        const finalVal = baseVal - discVal;
+        const taxVal = finalVal * ((item.product.gst || 0) / 100);
+
+        subtotal += baseVal;
+        totalDiscount += discVal;
+        totalTax += taxVal;
+    });
+
+    const total = subtotal - totalDiscount + totalTax;
 
     document.getElementById('cartSubtotal').textContent = `₹${subtotal.toFixed(2)}`;
-    document.getElementById('cartTax').textContent = `₹${tax.toFixed(2)}`;
+    document.getElementById('cartDiscount').textContent = `-₹${totalDiscount.toFixed(2)}`;
+    document.getElementById('cartTax').textContent = `₹${totalTax.toFixed(2)}`;
     document.getElementById('cartTotal').textContent = `₹${total.toFixed(2)}`;
 }
 
@@ -238,22 +266,40 @@ async function finalizeSale() {
     }
 
     const user = getSessionUser();
-    const subtotal = currentCart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-    const tax = subtotal * 0.05;
-    const total = subtotal + tax;
+    let subtotal = 0;
+    let totalDiscount = 0;
+    let totalTax = 0;
+
+    currentCart.forEach(item => {
+        const baseVal = item.product.price * item.quantity;
+        const discVal = baseVal * ((item.product.discount || 0) / 100);
+        const finalVal = baseVal - discVal;
+        const taxVal = finalVal * ((item.product.gst || 0) / 100);
+
+        subtotal += baseVal;
+        totalDiscount += discVal;
+        totalTax += taxVal;
+    });
+
+    const total = subtotal - totalDiscount + totalTax;
     const paymentMethod = document.getElementById('paymentMethod').value;
 
     const bill = {
         userId: user.id,
         totalAmount: total,
-        taxAmount: tax,
+        taxAmount: totalTax,
         paymentMethod: paymentMethod,
-        billItems: currentCart.map(item => ({
-            productId: item.product.id,
-            productName: item.product.name,
-            quantity: item.quantity,
-            priceAtSale: item.product.price
-        }))
+        billItems: currentCart.map(item => {
+            const baseVal = item.product.price * item.quantity;
+            const discVal = baseVal * ((item.product.discount || 0) / 100);
+            const finalVal = baseVal - discVal;
+            return {
+                productId: item.product.id,
+                productName: item.product.name,
+                quantity: item.quantity,
+                priceAtSale: finalVal / item.quantity
+            };
+        })
     };
 
     try {
@@ -311,6 +357,8 @@ async function loadInventory() {
         api.getSuppliers()
     ]);
     
+    window.allProductsList = products;
+
     const supplierMap = {};
     suppliers.forEach(s => {
         supplierMap[s.id] = s.name;
@@ -324,16 +372,19 @@ async function loadInventory() {
                 <td>${p.name}</td>
                 <td>${supplierName}</td>
                 <td>₹${p.price.toFixed(2)}</td>
+                <td>${p.discount ? p.discount.toFixed(1) : '0.0'}%</td>
+                <td>${p.gst ? p.gst.toFixed(1) : '0.0'}%</td>
                 <td>${p.stockQuantity}</td>
                 <td>
                     <span class="badge ${p.stockQuantity < 10 ? 'badge-danger' : 'badge-success'}">
                         ${p.stockQuantity < 10 ? 'Low Stock' : 'Optimal'}
                     </span>
                 </td>
-                <td style="text-align: right;">
-                    <div style="display: inline-flex; gap: 0.5rem;">
+                <td style="text-align: right; padding-right: 2rem;">
+                    <div style="display: inline-flex; gap: 0.5rem; align-items: center;">
                         <button class="btn btn-sm btn-primary" onclick="stockAdjust('${p.id}', 10)" title="Add 10"><i class="fas fa-plus"></i></button>
                         <button class="btn btn-sm btn-danger" onclick="stockAdjust('${p.id}', -10)" title="Remove 10" style="background: transparent; border: 1px solid var(--danger); color: var(--danger); box-shadow: none;"><i class="fas fa-minus"></i></button>
+                        <button class="btn btn-sm btn-primary" onclick="openEditProductModal('${p.id}')" title="Edit Product" style="background: transparent; border: 1px solid var(--primary); color: var(--primary); box-shadow: none;"><i class="fas fa-edit"></i></button>
                     </div>
                 </td>
             </tr>
@@ -486,6 +537,47 @@ async function showModal(id) {
     document.getElementById(id).style.display = 'flex';
 }
 
+function openNewProductModal() {
+    document.getElementById('p_id').value = '';
+    document.getElementById('sku').value = '';
+    document.getElementById('pname').value = '';
+    document.getElementById('price').value = '';
+    document.getElementById('pdiscount').value = 0;
+    document.getElementById('pgst').value = 0;
+    document.getElementById('stock').value = 0;
+    document.getElementById('psupplier').value = '';
+    
+    document.getElementById('productModalTitle').innerHTML = '<i class="fas fa-box-open" style="color: var(--primary); margin-right: 0.5rem;"></i> Register New Product';
+    document.getElementById('productSubmitBtn').textContent = 'Save Product';
+    
+    showModal('productModal');
+}
+
+async function openEditProductModal(productId) {
+    const pIdInt = parseInt(productId);
+    const product = (window.allProductsList || []).find(p => p.id === pIdInt);
+    if (!product) {
+        showToast('Product data not found', 'error');
+        return;
+    }
+    
+    await populateSuppliersDropdown();
+    
+    document.getElementById('p_id').value = product.id;
+    document.getElementById('sku').value = product.skuCode;
+    document.getElementById('pname').value = product.name;
+    document.getElementById('price').value = product.price;
+    document.getElementById('pdiscount').value = product.discount || 0;
+    document.getElementById('pgst').value = product.gst || 0;
+    document.getElementById('stock').value = product.stockQuantity;
+    document.getElementById('psupplier').value = product.supplierId || '';
+    
+    document.getElementById('productModalTitle').innerHTML = '<i class="fas fa-edit" style="color: var(--primary); margin-right: 0.5rem;"></i> Edit Product Details';
+    document.getElementById('productSubmitBtn').textContent = 'Update Product';
+    
+    showModal('productModal');
+}
+
 function hideModal(id) {
     document.getElementById(id).style.display = 'none';
 }
@@ -505,18 +597,25 @@ async function populateSuppliersDropdown() {
 // Form Submissions
 document.getElementById('productForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const idVal = document.getElementById('p_id').value;
     const supplierSelect = document.getElementById('psupplier');
     const product = {
         skuCode: document.getElementById('sku').value,
         name: document.getElementById('pname').value,
         price: parseFloat(document.getElementById('price').value),
+        discount: parseFloat(document.getElementById('pdiscount').value || 0),
+        gst: parseFloat(document.getElementById('pgst').value || 0),
         stockQuantity: parseInt(document.getElementById('stock').value),
         supplierId: supplierSelect.value ? parseInt(supplierSelect.value) : null
     };
 
+    if (idVal) {
+        product.id = parseInt(idVal);
+    }
+
     try {
         await api.saveProduct(product);
-        showToast('Product added to catalog');
+        showToast(idVal ? 'Product updated successfully' : 'Product added to catalog');
         hideModal('productModal');
         loadInventory();
         e.target.reset();
