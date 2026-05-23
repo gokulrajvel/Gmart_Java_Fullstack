@@ -183,17 +183,22 @@ function updateCartUI() {
     const tbody = document.querySelector('#cartTable tbody');
     tbody.innerHTML = currentCart.map((item, index) => {
         const baseVal = item.product.price * item.quantity;
-        const discVal = baseVal * ((item.product.discount || 0) / 100);
+        const discountPct = item.product.discount || 0;
+        const gstPct = item.product.gst || 0;
+        const discVal = baseVal * (discountPct / 100);
         const finalItemVal = baseVal - discVal;
-        const taxVal = finalItemVal * ((item.product.gst || 0) / 100);
+        const taxVal = finalItemVal * (gstPct / 100);
         const itemTotal = finalItemVal + taxVal;
 
         return `
         <tr>
             <td>
                 <strong style="color: var(--text-main);">${item.product.name}</strong>
-                ${item.product.discount > 0 ? `<div style="font-size: 0.75rem; color: var(--success); font-weight: 500;"><i class="fas fa-tags"></i> ${item.product.discount}% Off</div>` : ''}
-                ${item.product.gst > 0 ? `<div style="font-size: 0.75rem; color: var(--text-muted);">GST (${item.product.gst}%)</div>` : ''}
+                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem; line-height: 1.4;">
+                    <div>Base: ₹${item.product.price.toFixed(2)} × ${item.quantity} = ₹${baseVal.toFixed(2)}</div>
+                    ${discountPct > 0 ? `<div style="color: var(--success);"><i class="fas fa-tags" style="font-size: 0.65rem;"></i> Discount (-${discountPct}%): -₹${discVal.toFixed(2)} (Taxable: ₹${finalItemVal.toFixed(2)})</div>` : ''}
+                    ${gstPct > 0 ? `<div><i class="fas fa-percent" style="font-size: 0.65rem;"></i> GST (+${gstPct}%): +₹${taxVal.toFixed(2)}</div>` : ''}
+                </div>
             </td>
             <td>₹${item.product.price.toFixed(2)}</td>
             <td>
@@ -201,8 +206,7 @@ function updateCartUI() {
                     onchange="updateCartQuantity(${index}, this.value)" class="quantity-input">
             </td>
             <td>
-                <span style="font-weight: 600;">₹${itemTotal.toFixed(2)}</span>
-                ${discVal > 0 ? `<div style="font-size: 0.7rem; color: var(--text-muted); text-decoration: line-through;">₹${baseVal.toFixed(2)}</div>` : ''}
+                <span style="font-weight: 600; color: var(--text-main);">₹${itemTotal.toFixed(2)}</span>
             </td>
             <td style="text-align: right;">
                 <button class="btn btn-sm btn-danger" onclick="removeFromCart(${index})" style="padding: 0.35rem 0.6rem; border-radius: 0.5rem; background: transparent; border: 1px solid var(--danger); color: var(--danger); box-shadow: none;">
@@ -315,7 +319,14 @@ async function finalizeSale() {
             });
         }
 
-        showToast('Sale finalized successfully!');
+        const successModal = document.getElementById('checkoutSuccessModal');
+        if (successModal) {
+            successModal.classList.add('active');
+            setTimeout(() => {
+                successModal.classList.remove('active');
+            }, 3000);
+        }
+        
         clearCart();
         updateStats();
     } catch (e) {
@@ -359,6 +370,15 @@ async function loadInventory() {
     
     window.allProductsList = products;
 
+    const user = getSessionUser();
+    const isAdmin = user && user.role === 'ADMIN';
+
+    // Hide or show New Product button based on ADMIN role
+    const newProductBtn = document.getElementById('newProductBtn');
+    if (newProductBtn) {
+        newProductBtn.style.display = isAdmin ? 'block' : 'none';
+    }
+
     const supplierMap = {};
     suppliers.forEach(s => {
         supplierMap[s.id] = s.name;
@@ -366,9 +386,21 @@ async function loadInventory() {
 
     tbody.innerHTML = products.map(p => {
         const supplierName = supplierMap[p.supplierId] || `Supplier #${p.supplierId || 'N/A'}`;
+        
+        const actionHtml = isAdmin 
+            ? `<div style="display: inline-flex; gap: 0.5rem; align-items: center;">
+                <button class="btn btn-sm btn-primary" onclick="stockAdjust('${p.id}', 10)" title="Add 10"><i class="fas fa-plus"></i></button>
+                <button class="btn btn-sm btn-danger" onclick="stockAdjust('${p.id}', -10)" title="Remove 10" style="background: transparent; border: 1px solid var(--danger); color: var(--danger); box-shadow: none;"><i class="fas fa-minus"></i></button>
+                <button class="btn btn-sm btn-primary" onclick="openEditProductModal('${p.id}')" title="Edit Product" style="background: transparent; border: 1px solid var(--primary); color: var(--primary); box-shadow: none;"><i class="fas fa-edit"></i></button>
+               </div>`
+            : `<div style="display: inline-flex; gap: 0.5rem; align-items: center;">
+                <button class="btn btn-sm btn-primary" onclick="stockAdjust('${p.id}', 10)" title="Add 10"><i class="fas fa-plus"></i></button>
+                <button class="btn btn-sm btn-danger" onclick="stockAdjust('${p.id}', -10)" title="Remove 10" style="background: transparent; border: 1px solid var(--danger); color: var(--danger); box-shadow: none;"><i class="fas fa-minus"></i></button>
+               </div>`;
+
         return `
             <tr>
-                <td><strong style="color: var(--primary);">${p.skuCode}</strong></td>
+                <td><strong style="color: var(--text-main);">${p.skuCode}</strong></td>
                 <td>${p.name}</td>
                 <td>${supplierName}</td>
                 <td>₹${p.price.toFixed(2)}</td>
@@ -381,11 +413,7 @@ async function loadInventory() {
                     </span>
                 </td>
                 <td style="text-align: right; padding-right: 2rem;">
-                    <div style="display: inline-flex; gap: 0.5rem; align-items: center;">
-                        <button class="btn btn-sm btn-primary" onclick="stockAdjust('${p.id}', 10)" title="Add 10"><i class="fas fa-plus"></i></button>
-                        <button class="btn btn-sm btn-danger" onclick="stockAdjust('${p.id}', -10)" title="Remove 10" style="background: transparent; border: 1px solid var(--danger); color: var(--danger); box-shadow: none;"><i class="fas fa-minus"></i></button>
-                        <button class="btn btn-sm btn-primary" onclick="openEditProductModal('${p.id}')" title="Edit Product" style="background: transparent; border: 1px solid var(--primary); color: var(--primary); box-shadow: none;"><i class="fas fa-edit"></i></button>
-                    </div>
+                    ${actionHtml}
                 </td>
             </tr>
         `;
@@ -538,6 +566,11 @@ async function showModal(id) {
 }
 
 function openNewProductModal() {
+    const user = getSessionUser();
+    if (!user || user.role !== 'ADMIN') {
+        showToast('Access denied: Admins only', 'error');
+        return;
+    }
     document.getElementById('p_id').value = '';
     document.getElementById('sku').value = '';
     document.getElementById('pname').value = '';
@@ -554,6 +587,11 @@ function openNewProductModal() {
 }
 
 async function openEditProductModal(productId) {
+    const user = getSessionUser();
+    if (!user || user.role !== 'ADMIN') {
+        showToast('Access denied: Admins only', 'error');
+        return;
+    }
     const pIdInt = parseInt(productId);
     const product = (window.allProductsList || []).find(p => p.id === pIdInt);
     if (!product) {
@@ -597,6 +635,11 @@ async function populateSuppliersDropdown() {
 // Form Submissions
 document.getElementById('productForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const user = getSessionUser();
+    if (!user || user.role !== 'ADMIN') {
+        showToast('Access denied: Admins only', 'error');
+        return;
+    }
     const idVal = document.getElementById('p_id').value;
     const supplierSelect = document.getElementById('psupplier');
     const product = {
