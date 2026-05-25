@@ -1,12 +1,20 @@
-# Ignore everything in the root directory by default
-/*
+# IDEs and Editors
+.idea/
+.vscode/
+*.local
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# Allow tracking of this .gitignore file itself
-!/.gitignore
-
-# Allow tracking of the Maven configuration file
-!/pom.xml
-
-# Allow tracking of all source code files under the src directory
-!/src/
-!/README.md/
+# Build and Temp folders
+target/
+backend/target/
+frontend/dist/
+frontend/node_modules/
+node_modules/
+.DS_Store
+log/
+*.log
+build-tools/

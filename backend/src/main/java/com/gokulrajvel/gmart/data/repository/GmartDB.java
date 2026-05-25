@@ -36,7 +36,7 @@ public class GmartDB {
             "CREATE TABLE IF NOT EXISTS products (id INT AUTO_INCREMENT PRIMARY KEY, sku_code VARCHAR(20) NOT NULL UNIQUE, name VARCHAR(100) NOT NULL, category_id INT, supplier_id INT, price DECIMAL(10, 2) NOT NULL, stock_quantity INT DEFAULT 0, FOREIGN KEY (category_id) REFERENCES categories(id), FOREIGN KEY (supplier_id) REFERENCES suppliers(id))",
             "CREATE TABLE IF NOT EXISTS transactions (id INT AUTO_INCREMENT PRIMARY KEY, product_id INT, user_id INT, transaction_type ENUM('INWARD', 'OUTWARD') NOT NULL, quantity INT NOT NULL, transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (product_id) REFERENCES products(id), FOREIGN KEY (user_id) REFERENCES users(id))",
             "CREATE TABLE IF NOT EXISTS bills (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, total_amount DECIMAL(10, 2) NOT NULL, tax_amount DECIMAL(10, 2) NOT NULL, payment_method ENUM('CASH', 'CARD', 'UPI') NOT NULL, bill_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id))",
-            "CREATE TABLE IF NOT EXISTS bill_items (id INT AUTO_INCREMENT PRIMARY KEY, bill_id INT, product_id INT, quantity INT NOT NULL, price_at_sale DECIMAL(10, 2) NOT NULL, FOREIGN KEY (bill_id) REFERENCES bills(id), FOREIGN KEY (product_id) REFERENCES products(id))"
+            "CREATE TABLE IF NOT EXISTS bill_items (id INT AUTO_INCREMENT PRIMARY KEY, bill_id INT, product_id INT, product_name VARCHAR(255), quantity INT NOT NULL, price_at_sale DECIMAL(10, 2) NOT NULL, FOREIGN KEY (bill_id) REFERENCES bills(id), FOREIGN KEY (product_id) REFERENCES products(id))"
         };
 
         try (Connection conn = getConnection()) {
@@ -47,6 +47,15 @@ public class GmartDB {
             try (Statement stmt = conn.createStatement()) {
                 for (String query : queries) {
                     stmt.execute(query);
+                }
+                // Ensure product_name column exists in bill_items (in case table was created before)
+                try {
+                    stmt.execute("ALTER TABLE bill_items ADD COLUMN product_name VARCHAR(255)");
+                } catch (SQLException e) {
+                    // Ignore if column already exists (SQLState 42S21 or ErrorCode 1060)
+                    if (!"42S21".equals(e.getSQLState()) && e.getErrorCode() != 1060) {
+                        System.err.println("Warning altering bill_items table: " + e.getMessage());
+                    }
                 }
             }
         } catch (SQLException e) {

@@ -93,3 +93,5 @@ const api = {
     getBills: () => apiRequest('/bills'),
     createBill: (bill) => apiRequest('/bills', 'POST', bill)
 };
+
+window.api = api;

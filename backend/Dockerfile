@@ -2,12 +2,12 @@
 FROM maven:3.9.6-eclipse-temurin-17 AS builder
 WORKDIR /build
 
-# Copy the pom.xml first to download and cache Maven dependencies from the new backend folder
-COPY backend/pom.xml .
+# Copy the pom.xml first to download and cache Maven dependencies
+COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Copy the backend source code and build the package
-COPY backend/src ./src
+# Copy the source code and build the package
+COPY src ./src
 RUN mvn clean package -DskipTests
 
 # Runtime stage using Eclipse Temurin JRE 17

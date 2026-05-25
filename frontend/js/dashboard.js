@@ -891,3 +891,37 @@ function logout() {
     removeSessionUser();
     window.location.href = 'index.html';
 }
+
+// Expose functions to global scope for HTML event handlers
+window.getSavedTheme = getSavedTheme;
+window.setSavedTheme = setSavedTheme;
+window.updateThemeIcon = updateThemeIcon;
+window.initTheme = initTheme;
+window.toggleTheme = toggleTheme;
+window.showToast = showToast;
+window.showSection = showSection;
+window.addToCartBySku = addToCartBySku;
+window.updateCartUI = updateCartUI;
+window.updateCartQuantity = updateCartQuantity;
+window.removeFromCart = removeFromCart;
+window.clearCart = clearCart;
+window.finalizeSale = finalizeSale;
+window.closeConfirmModal = closeConfirmModal;
+window.executeCheckout = executeCheckout;
+window.loadSectionData = loadSectionData;
+window.updateStats = updateStats;
+window.loadInventory = loadInventory;
+window.stockAdjust = stockAdjust;
+window.loadUsers = loadUsers;
+window.deleteUser = deleteUser;
+window.openNewUserModal = openNewUserModal;
+window.openEditUserModal = openEditUserModal;
+window.loadSuppliers = loadSuppliers;
+window.openNewSupplierModal = openNewSupplierModal;
+window.editSupplier = editSupplier;
+window.loadTransactions = loadTransactions;
+window.showModal = showModal;
+window.openNewProductModal = openNewProductModal;
+window.openEditProductModal = openEditProductModal;
+window.hideModal = hideModal;
+window.logout = logout;
