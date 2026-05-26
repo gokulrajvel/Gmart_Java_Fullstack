@@ -15,6 +15,7 @@ public class UserService {
 
     public User authenticate(String username, String password) {
         Optional<User> user = userRepository.findByUsername(username);
+        System.out.println(user.get().getPassword());
         if (user.isPresent() && user.get().getPassword().equals(password)) {
             return user.get();
         }
