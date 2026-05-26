@@ -3,7 +3,7 @@ let stompClient = null;
 
 export function initNotificationSocket() {
     // 1. Retrieve current logged-in user
-    const userStr = localStorage.getItem('user');
+    const userStr = window.cookies.get('user');
     const user = userStr ? JSON.parse(userStr) : null;
 
     if (!user) {

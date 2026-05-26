@@ -18,19 +18,19 @@ function setSavedTheme(theme) {
 
 function getSessionUser() {
     try {
-        const userStr = localStorage.getItem('user');
+        const userStr = window.cookies.get('user');
         return userStr ? JSON.parse(userStr) : null;
     } catch (e) {
-        console.warn('localStorage is not accessible:', e);
+        console.warn('Cookies are not accessible:', e);
         return null;
     }
 }
 
 function removeSessionUser() {
     try {
-        localStorage.removeItem('user');
+        window.cookies.remove('user');
     } catch (e) {
-        console.warn('localStorage is not accessible:', e);
+        console.warn('Cookies are not accessible:', e);
     }
 }
 
