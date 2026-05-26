@@ -51,6 +51,8 @@ public class SecurityConfig {
             
             // Configure path authorization
             .authorizeHttpRequests(auth -> auth
+                // Permit static resources for the SPA frontend
+                .requestMatchers("/", "/index.html", "/dashboard.html", "/css/**", "/js/**", "/assets/**", "/favicon.ico", "/error").permitAll()
                 .requestMatchers("/login", "/api/auth/login").permitAll()
                 .requestMatchers("/ws/**").authenticated()
                 .anyRequest().authenticated()
@@ -59,12 +61,6 @@ public class SecurityConfig {
             // Stateful cookie-based session management
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
-            )
-            
-            // Enable form login (enables standard Spring Security form login flow)
-            .formLogin(form -> form
-                .loginPage("/login")
-                .permitAll()
             )
             
             // Configure logout (invalidates HTTP session, clears SecurityContext, and deletes JSESSIONID cookie)
