@@ -10,11 +10,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const user = await api.login({ username, password });
-                // Save user to session storage safely
+                // Save user to local storage safely
                 try {
-                    sessionStorage.setItem('user', JSON.stringify(user));
+                    localStorage.setItem('user', JSON.stringify(user));
                 } catch (se) {
-                    console.warn('sessionStorage is not accessible:', se);
+                    console.warn('localStorage is not accessible:', se);
                 }
                 // Redirect to dashboard
                 window.location.href = 'dashboard.html';

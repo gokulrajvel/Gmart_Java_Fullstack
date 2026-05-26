@@ -18,19 +18,19 @@ function setSavedTheme(theme) {
 
 function getSessionUser() {
     try {
-        const userStr = sessionStorage.getItem('user');
+        const userStr = localStorage.getItem('user');
         return userStr ? JSON.parse(userStr) : null;
     } catch (e) {
-        console.warn('sessionStorage is not accessible:', e);
+        console.warn('localStorage is not accessible:', e);
         return null;
     }
 }
 
 function removeSessionUser() {
     try {
-        sessionStorage.removeItem('user');
+        localStorage.removeItem('user');
     } catch (e) {
-        console.warn('sessionStorage is not accessible:', e);
+        console.warn('localStorage is not accessible:', e);
     }
 }
 
