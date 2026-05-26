@@ -74,15 +74,15 @@ const api = {
     // Products
     getProducts: () => apiRequest('/products'),
     getProduct: (sku) => apiRequest(`/products/${sku}`),
-    saveProduct: (product) => apiRequest('/products', 'POST', product),
+    saveProduct: (product) => product.id ? apiRequest(`/products/${product.id}`, 'PUT', product) : apiRequest('/products', 'POST', product),
     
     // Suppliers
     getSuppliers: () => apiRequest('/suppliers'),
-    saveSupplier: (supplier) => apiRequest('/suppliers', 'POST', supplier),
+    saveSupplier: (supplier) => supplier.id ? apiRequest(`/suppliers/${supplier.id}`, 'PUT', supplier) : apiRequest('/suppliers', 'POST', supplier),
     
     // Users
     getUsers: () => apiRequest('/users'),
-    saveUser: (user) => apiRequest('/users', 'POST', user),
+    saveUser: (user) => user.id ? apiRequest(`/users/${user.id}`, 'PUT', user) : apiRequest('/users', 'POST', user),
     deleteUser: (id) => apiRequest(`/users/${id}`, 'DELETE'),
 
     // Transactions

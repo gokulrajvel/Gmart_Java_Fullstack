@@ -2,6 +2,7 @@ package com.gokulrajvel.gmart.controller;
 
 import com.gokulrajvel.gmart.data.dto.User;
 import com.gokulrajvel.gmart.service.UserService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,6 +25,13 @@ public class UserController {
     @PostMapping
     public User addUser(@RequestBody User user) {
         return userService.saveUser(user);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<User> updateUser(@PathVariable int id, @RequestBody User user) {
+        return userService.updateUser(id, user)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")

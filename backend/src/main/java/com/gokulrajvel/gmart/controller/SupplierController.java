@@ -2,6 +2,7 @@ package com.gokulrajvel.gmart.controller;
 
 import com.gokulrajvel.gmart.data.dto.Supplier;
 import com.gokulrajvel.gmart.service.SupplierService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,5 +25,12 @@ public class SupplierController {
     @PostMapping
     public Supplier addSupplier(@RequestBody Supplier supplier) {
         return supplierService.saveSupplier(supplier);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Supplier> updateSupplier(@PathVariable int id, @RequestBody Supplier supplier) {
+        return supplierService.updateSupplier(id, supplier)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 }

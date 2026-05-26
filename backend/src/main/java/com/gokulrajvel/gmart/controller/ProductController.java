@@ -33,4 +33,11 @@ public class ProductController {
     public Product addProduct(@RequestBody Product product) {
         return productService.saveProduct(product);
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Product> updateProduct(@PathVariable int id, @RequestBody Product product) {
+        return productService.updateProduct(id, product)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 }

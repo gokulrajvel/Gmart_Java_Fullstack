@@ -1,3 +1,5 @@
+import { initNotificationSocket } from './notifications.js';
+
 function getSavedTheme() {
     try {
         return localStorage.getItem('theme') || 'dark';
@@ -77,6 +79,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Apply strict Role-Based Access Control (RBAC)
     applyRBAC(user.role);
+
+    // Initialize real-time WebSocket notifications
+    initNotificationSocket();
 
     // Initial load
     updateStats();
