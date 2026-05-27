@@ -1,6 +1,16 @@
+/**
+ * GMart Client-Side API Utility Layer
+ * Handles global AJAX requests, loading spinner state management,
+ * cookie interactions, and 401 session-expiration handler.
+ */
+
 const BASE_URL = '/api';
 
-// Global Loader Management
+/**
+ * Global Loader UI management.
+ * Dispatches and coordinates loading spinner animation.
+ * Minimizes flickering using delay thresholds.
+ */
 const loader = {
     showTimeout: null,
     activeRequests: 0,
@@ -29,6 +39,15 @@ const loader = {
     }
 };
 
+/**
+ * Core fetch wrapper that makes HTTP request to GMart endpoints.
+ * Handles automatic loader animations, HTTP error handling, and session invalidation.
+ * 
+ * @param {string} endpoint - The target API route (e.g. /products)
+ * @param {string} method - HTTP method (GET, POST, PUT, DELETE)
+ * @param {object} body - Request payload body
+ * @returns {Promise<object>} Parsed JSON response object
+ */
 async function apiRequest(endpoint, method = 'GET', body = null) {
     const options = {
         method,
@@ -77,6 +96,10 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
     }
 }
 
+/**
+ * Unified API Client Services.
+ * Maps components (Products, Suppliers, Users/Staff, Transactions, Bills) to backend endpoints.
+ */
 const api = {
     login: (credentials) => apiRequest('/auth/login', 'POST', credentials),
     
@@ -103,7 +126,18 @@ const api = {
     createBill: (bill) => apiRequest('/bills', 'POST', bill)
 };
 
+/**
+ * Client-side Cookie Helper utility.
+ * Manages storing, retrieving, and clearing cookies with standard path and security flags.
+ */
 const cookies = {
+    /**
+     * Set a cookie value with a specific lifetime.
+     * 
+     * @param {string} name - Cookie name
+     * @param {string} value - Cookie value
+     * @param {number} days - Cookie lifetime in days
+     */
     set: (name, value, days) => {
         let expires = "";
         if (days) {
@@ -113,6 +147,13 @@ const cookies = {
         }
         document.cookie = name + "=" + encodeURIComponent(value || "") + expires + "; path=/; SameSite=Strict";
     },
+    
+    /**
+     * Retrieve a cookie value by name.
+     * 
+     * @param {string} name - Target cookie name
+     * @returns {string|null} Cookie value, or null if not found
+     */
     get: (name) => {
         let nameEQ = name + "=";
         let ca = document.cookie.split(';');
@@ -123,6 +164,12 @@ const cookies = {
         }
         return null;
     },
+    
+    /**
+     * Deletes a cookie by setting its expiration date in the past.
+     * 
+     * @param {string} name - Target cookie name
+     */
     remove: (name) => {   
         document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Strict';
     }

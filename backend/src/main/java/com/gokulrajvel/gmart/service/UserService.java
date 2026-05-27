@@ -4,18 +4,37 @@ import com.gokulrajvel.gmart.data.dto.User;
 import com.gokulrajvel.gmart.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import java.util.List;
 import java.util.Optional;
 
+/**
+ * Service class that handles business operations for Users/Employees.
+ * Manages database authentication, password hashing, and user profile management (CRUD).
+ */
 @Service
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * Constructs the user service with required repositories and encoders.
+     *
+     * @param userRepository  user persistence repository
+     * @param passwordEncoder encoder used to hash passwords and verify matches
+     */
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
+    /**
+     * Authenticates a user based on their username and password.
+     * Integrates automatic hashing upgrade for legacy plain-text passwords stored in the database.
+     *
+     * @param username the input username
+     * @param password the input plain-text password
+     * @return the authenticated User object, or null if credentials do not match
+     */
     public User authenticate(String username, String password) {
         Optional<User> userOpt = userRepository.findByUsername(username);
         if (userOpt.isPresent()) {
@@ -35,6 +54,13 @@ public class UserService {
         return null;
     }
 
+    /**
+     * Saves a new user to the database.
+     * Checks if the password is already BCrypt hashed; if not, hashes it before persisting.
+     *
+     * @param user the User entity details to save
+     * @return the saved User entity
+     */
     public User saveUser(User user) {
         String rawPassword = user.getPassword();
         boolean isBcrypt = rawPassword != null && (rawPassword.startsWith("$2a$") || rawPassword.startsWith("$2b$") || rawPassword.startsWith("$2y$"));
@@ -44,6 +70,14 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    /**
+     * Updates an existing user's profile information.
+     * Dynamically detects password modifications and hashes them if updated.
+     *
+     * @param id          the ID of the user to update
+     * @param updatedUser the new profile details to merge
+     * @return an Optional containing the updated User if found, or empty if the ID does not exist
+     */
     public Optional<User> updateUser(int id, User updatedUser) {
         return userRepository.findById(id).map(existingUser -> {
             existingUser.setUsername(updatedUser.getUsername());
@@ -64,10 +98,20 @@ public class UserService {
         });
     }
 
-    public java.util.List<User> getAllUsers() {
+    /**
+     * Retrieves all user accounts.
+     *
+     * @return a List of all User entities
+     */
+    public List<User> getAllUsers() {
         return userRepository.findAll();
     }
 
+    /**
+     * Deletes a user by their ID.
+     *
+     * @param id the ID of the user to delete
+     */
     public void deleteUser(Integer id) {
         userRepository.deleteById(id);
     }

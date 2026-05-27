@@ -15,6 +15,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 
+/**
+ * Controller handling user authentication requests.
+ * Manages login validation, programmatic SecurityContext setup for stateful HTTP sessions,
+ * and integration with the ActiveSessionRegistry to enforce single concurrent sessions.
+ */
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "*")
@@ -23,11 +28,26 @@ public class AuthController {
     private final UserService userService;
     private final ActiveSessionRegistry activeSessionRegistry;
 
+    /**
+     * Constructs the authentication controller with required services.
+     *
+     * @param userService           service to authenticate user credentials
+     * @param activeSessionRegistry registry to track single active session per user
+     */
     public AuthController(UserService userService, ActiveSessionRegistry activeSessionRegistry) {
         this.userService = userService;
         this.activeSessionRegistry = activeSessionRegistry;
     }
 
+    /**
+     * Handles POST requests for user login.
+     * Validates credentials, sets up programmatic Spring Security authentication tokens,
+     * links the authentication with an HttpSession, and registers the session to prevent concurrent logins.
+     *
+     * @param loginRequest the credentials payload containing username and password
+     * @param request      the HTTP request wrapper used to retrieve/create sessions
+     * @return 200 OK with authenticated user profile details, or 401 Unauthorized on invalid credentials
+     */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody User loginRequest, HttpServletRequest request) {
         User authenticatedUser = userService.authenticate(
