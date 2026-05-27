@@ -1,4 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Redirect to dashboard if user is already logged in
+    try {
+        if (window.cookies && window.cookies.get('user')) {
+            window.location.href = 'dashboard.html';
+            return;
+        }
+    } catch (e) {
+        console.warn('Cookies are not accessible:', e);
+    }
+
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {

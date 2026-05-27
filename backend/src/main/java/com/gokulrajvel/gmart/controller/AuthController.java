@@ -1,5 +1,6 @@
 package com.gokulrajvel.gmart.controller;
 
+import com.gokulrajvel.gmart.config.ActiveSessionRegistry;
 import com.gokulrajvel.gmart.data.dto.User;
 import com.gokulrajvel.gmart.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,9 +21,11 @@ import java.util.Collections;
 public class AuthController {
 
     private final UserService userService;
+    private final ActiveSessionRegistry activeSessionRegistry;
 
-    public AuthController(UserService userService) {
+    public AuthController(UserService userService, ActiveSessionRegistry activeSessionRegistry) {
         this.userService = userService;
+        this.activeSessionRegistry = activeSessionRegistry;
     }
 
     @PostMapping("/login")
@@ -46,6 +49,9 @@ public class AuthController {
             // Link authentication context with HttpSession
             HttpSession session = request.getSession(true);
             session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, securityContext);
+
+            // Register session in our active session registry (will invalidate previous session of the same user)
+            activeSessionRegistry.registerSession(authenticatedUser.getUsername(), session);
 
             return ResponseEntity.ok(authenticatedUser);
         } else {

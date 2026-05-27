@@ -55,6 +55,15 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
     try {
         const response = await fetch(`${BASE_URL}${endpoint}`, options);
         if (!response.ok) {
+            if (response.status === 401 && !endpoint.includes('/auth/login')) {
+                try {
+                    window.cookies.remove('user');
+                } catch (e) {
+                    console.warn('Cookies are not accessible:', e);
+                }
+                window.location.href = 'index.html';
+                return;
+            }
             const error = await response.text();
             throw new Error(error || 'Something went wrong');
         }
