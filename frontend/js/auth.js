@@ -30,8 +30,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const user = await api.login({ username, password });
                 
                 // Store user details in cookie (valid for 30 days) for client-side view management
+                // Save only non-sensitive metadata (exclude password and other sensitive details)
+                const safeUser = {
+                    id: user.id,
+                    username: user.username,
+                    role: user.role
+                };
                 try {
-                    window.cookies.set('user', JSON.stringify(user), 30);
+                    window.cookies.set('user', JSON.stringify(safeUser), 30);
                 } catch (se) {
                     console.warn('Cookies are not accessible:', se);
                 }
