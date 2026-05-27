@@ -78,4 +78,16 @@ public class AuthController {
             return ResponseEntity.status(401).body("Invalid username or password");
         }
     }
+
+    /**
+     * Endpoint to silently verify if the current HTTP session is still valid.
+     * If the session has been invalidated (e.g. by a concurrent login), Spring Security
+     * will intercept the request and return 401 Unauthorized before reaching this method.
+     *
+     * @return 200 OK if session is valid
+     */
+    @GetMapping("/status")
+    public ResponseEntity<?> checkStatus() {
+        return ResponseEntity.ok().build();
+    }
 }

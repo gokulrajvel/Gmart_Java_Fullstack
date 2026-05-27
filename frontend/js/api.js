@@ -46,9 +46,10 @@ const loader = {
  * @param {string} endpoint - The target API route (e.g. /products)
  * @param {string} method - HTTP method (GET, POST, PUT, DELETE)
  * @param {object} body - Request payload body
+ * @param {boolean} showLoader - Whether to show the loading screen spinner UI
  * @returns {Promise<object>} Parsed JSON response object
  */
-async function apiRequest(endpoint, method = 'GET', body = null) {
+async function apiRequest(endpoint, method = 'GET', body = null, showLoader = true) {
     const options = {
         method,
         headers: {
@@ -69,7 +70,9 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
     else if (endpoint.startsWith('/transactions')) msg = method === 'GET' ? 'Loading history...' : 'Recording transaction...';
     else if (endpoint.startsWith('/bills')) msg = method === 'GET' ? 'Loading sales logs...' : 'Generating bill invoice...';
 
-    loader.show(msg);
+    if (showLoader) {
+        loader.show(msg);
+    }
 
     try {
         const response = await fetch(`${BASE_URL}${endpoint}`, options);
@@ -92,7 +95,9 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
         console.error(`API Error (${endpoint}):`, error);
         throw error;
     } finally {
-        loader.hide();
+        if (showLoader) {
+            loader.hide();
+        }
     }
 }
 
@@ -102,6 +107,7 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
  */
 const api = {
     login: (credentials) => apiRequest('/auth/login', 'POST', credentials),
+    checkSessionStatus: () => apiRequest('/auth/status', 'GET', null, false),
     
     // Products
     getProducts: () => apiRequest('/products'),

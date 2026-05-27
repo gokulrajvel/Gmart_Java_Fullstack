@@ -83,6 +83,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize real-time WebSocket notifications
     initNotificationSocket();
 
+    // Start background checks to automatically detect session invalidation (e.g. from concurrent logins)
+    setInterval(async () => {
+        try {
+            await api.checkSessionStatus();
+        } catch (e) {
+            // Handled globally in api.js by redirecting to index.html on 401
+        }
+    }, 10000);
+
     // Initial load
     updateStats();
     showSection('overview');
