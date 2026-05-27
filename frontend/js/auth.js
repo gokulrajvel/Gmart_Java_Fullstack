@@ -27,7 +27,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 // Call authentication api service
-                const user = await api.login({ username, password });
+                const response = await api.login({ username, password });
+                const user = response.user;
+                const clientToken = response.clientToken;
+
+                // Save the unique clientToken in sessionStorage (specific to this tab/system)
+                try {
+                    sessionStorage.setItem('clientToken', clientToken);
+                } catch (se) {
+                    console.warn('sessionStorage is not accessible:', se);
+                }
                 
                 // Store user details in cookie (valid for 30 days) for client-side view management
                 // Save only non-sensitive metadata (exclude password and other sensitive details)

@@ -70,10 +70,14 @@ public class AuthController {
             HttpSession session = request.getSession(true);
             session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, securityContext);
 
+            // Generate a unique clientToken for this login and store it in the HTTP session
+            String clientToken = java.util.UUID.randomUUID().toString();
+            session.setAttribute("clientToken", clientToken);
+
             // Register session in our active session registry (will invalidate previous session of the same user)
             activeSessionRegistry.registerSession(authenticatedUser.getUsername(), session);
 
-            return ResponseEntity.ok(authenticatedUser);
+            return ResponseEntity.ok(new LoginResponse(authenticatedUser, clientToken));
         } else {
             return ResponseEntity.status(401).body("Invalid username or password");
         }
@@ -89,5 +93,26 @@ public class AuthController {
     @GetMapping("/status")
     public ResponseEntity<?> checkStatus() {
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * DTO containing user data and unique clientToken returned upon successful authentication.
+     */
+    public static class LoginResponse {
+        private final User user;
+        private final String clientToken;
+
+        public LoginResponse(User user, String clientToken) {
+            this.user = user;
+            this.clientToken = clientToken;
+        }
+
+        public User getUser() {
+            return user;
+        }
+
+        public String getClientToken() {
+            return clientToken;
+        }
     }
 }

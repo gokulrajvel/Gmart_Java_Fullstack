@@ -11,14 +11,7 @@ export function initNotificationSocket() {
         return;
     }
 
-    // Only allow ADMIN and PURCHASING_MANAGER roles to receive low-stock alerts
-    const authorizedRoles = ['ADMIN', 'PURCHASING_MANAGER'];
-    if (!authorizedRoles.includes(user.role)) {
-        console.log(`Notification System: Logged in as ${user.role}. Stock alert channel is disabled for this role.`);
-        return;
-    }
-
-    // 2. Establish WebSocket connection
+    // 2. Establish WebSocket connection (allowed for all roles to support real-time logout checks)
     const socket = new SockJS('/ws'); // Init SockJS over /ws endpoint
     stompClient = Stomp.over(socket);
 
@@ -32,7 +25,26 @@ export function initNotificationSocket() {
         stompClient.subscribe('/user/queue/notifications', function (message) {
             try {
                 const payload = JSON.parse(message.body);
-                handleStockAlert(payload);
+
+                // Handle real-time concurrent session logout command
+                if (payload && payload.action === 'logout') {
+                    const currentToken = sessionStorage.getItem('clientToken');
+                    if (currentToken !== payload.exceptClientToken) {
+                        console.log('Notification System: Another system logged in. Invalidating local session.');
+                        try {
+                            window.cookies.remove('user');
+                            sessionStorage.removeItem('clientToken');
+                        } catch (e) {}
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                }
+
+                // Handle low stock warnings (restricted to authorized roles)
+                const authorizedAlertRoles = ['ADMIN', 'PURCHASING_MANAGER'];
+                if (authorizedAlertRoles.includes(user.role)) {
+                    handleStockAlert(payload);
+                }
             } catch (e) {
                 console.error('Failed to parse incoming notification:', e);
             }

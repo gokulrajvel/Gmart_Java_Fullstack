@@ -1,8 +1,10 @@
 package com.gokulrajvel.gmart.config;
 
 import jakarta.servlet.http.HttpSession;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -12,6 +14,12 @@ import java.util.Map;
  */
 @Component
 public class ActiveSessionRegistry {
+    
+    private final SimpMessagingTemplate messagingTemplate;
+
+    public ActiveSessionRegistry(SimpMessagingTemplate messagingTemplate) {
+        this.messagingTemplate = messagingTemplate;
+    }
     
     /**
      * Wrapper class to store the HttpSession along with its ID as a String.
@@ -64,6 +72,21 @@ public class ActiveSessionRegistry {
         
         // If an old session existed and it represents a different session ID, invalidate it
         if (oldUserSession != null && !oldUserSession.getSessionId().equals(newSessionId)) {
+            // Retrieve the new clientToken that should be spared from the logout broadcast
+            String newClientToken = (String) session.getAttribute("clientToken");
+
+            // Broadcast a logout command to all active WebSocket sessions for this username,
+            // telling them to log out unless their clientToken matches newClientToken.
+            try {
+                Map<String, String> logoutPayload = new HashMap<>();
+                logoutPayload.put("action", "logout");
+                logoutPayload.put("exceptClientToken", newClientToken);
+                messagingTemplate.convertAndSendToUser(username, "/queue/notifications", logoutPayload);
+            } catch (Exception e) {
+                // If WebSocket broadcasting fails, log and fallback to standard HTTP session invalidation
+                System.err.println("Failed to broadcast WebSocket logout notification: " + e.getMessage());
+            }
+
             try {
                 oldUserSession.getSession().invalidate();
             } catch (IllegalStateException e) {
