@@ -13,8 +13,31 @@ import java.util.Map;
 @Component
 public class ActiveSessionRegistry {
     
-    // Concurrent map storing the mapping of username -> active HttpSession
-    private final Map<String, HttpSession> activeSessions = new ConcurrentHashMap<>();
+    /**
+     * Wrapper class to store the HttpSession along with its ID as a String.
+     * This avoids calling session.getId() on already-invalidated sessions,
+     * which would throw an IllegalStateException.
+     */
+    public static class UserSession {
+        private final String sessionId;
+        private final HttpSession session;
+
+        public UserSession(String sessionId, HttpSession session) {
+            this.sessionId = sessionId;
+            this.session = session;
+        }
+
+        public String getSessionId() {
+            return sessionId;
+        }
+
+        public HttpSession getSession() {
+            return session;
+        }
+    }
+
+    // Map storing the mapping of username -> UserSession wrapper
+    private final Map<String, UserSession> activeSessions = new ConcurrentHashMap<>();
 
     /**
      * Registers a new session for a user. If the user already has an active session on
@@ -28,11 +51,21 @@ public class ActiveSessionRegistry {
             return;
         }
         
-        HttpSession oldSession = activeSessions.put(username, session);
+        String newSessionId;
+        try {
+            newSessionId = session.getId();
+        } catch (IllegalStateException e) {
+            // New session is somehow already invalid
+            return;
+        }
+
+        UserSession newUserSession = new UserSession(newSessionId, session);
+        UserSession oldUserSession = activeSessions.put(username, newUserSession);
+        
         // If an old session existed and it represents a different session ID, invalidate it
-        if (oldSession != null && !oldSession.getId().equals(session.getId())) {
+        if (oldUserSession != null && !oldUserSession.getSessionId().equals(newSessionId)) {
             try {
-                oldSession.invalidate();
+                oldUserSession.getSession().invalidate();
             } catch (IllegalStateException e) {
                 // Session was already invalidated or expired
             }
@@ -58,8 +91,20 @@ public class ActiveSessionRegistry {
      * @param session the session object to remove
      */
     public void removeSession(HttpSession session) {
-        if (session != null) {
-            activeSessions.values().removeIf(s -> s.getId().equals(session.getId()));
+        if (session == null) {
+            return;
         }
+
+        String targetSessionId;
+        try {
+            targetSessionId = session.getId();
+        } catch (IllegalStateException e) {
+            // If the session is already fully invalidated, we can't retrieve its ID.
+            // Since it is already invalidated, we do not need to process it.
+            return;
+        }
+        
+        // Remove matching session IDs safely using the String sessionId in the wrapper
+        activeSessions.values().removeIf(us -> us.getSessionId().equals(targetSessionId));
     }
 }
