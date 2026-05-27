@@ -20,5 +20,8 @@ COPY --from=builder /build/target/Gmart_Full_Stack-1.0-SNAPSHOT.jar app.jar
 # Expose port 8080 for web access
 EXPOSE 8080
 
-# Execute the application
-ENTRYPOINT [ "java", "-jar", "app.jar" ]
+# Default JVM settings to optimize for container memory constraints (respecting container limits)
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+UseG1GC"
+
+# Execute the application using exec to properly handle OS shutdown signals
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]
