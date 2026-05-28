@@ -83,6 +83,15 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
             )
             
+            // Explicitly return 401 Unauthorized for unauthenticated API/WS requests instead of 403 Forbidden
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"Session has expired or is invalid.\"}");
+                })
+            )
+            
             // Logout definitions (invalidates HTTP session, clears Security Context, and removes JSESSIONID cookie)
             .logout(logout -> logout
                 .logoutUrl("/api/auth/logout")

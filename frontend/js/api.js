@@ -77,7 +77,7 @@ async function apiRequest(endpoint, method = 'GET', body = null, showLoader = tr
     try {
         const response = await fetch(`${BASE_URL}${endpoint}`, options);
         if (!response.ok) {
-            if (response.status === 401 && !endpoint.includes('/auth/login')) {
+            if ((response.status === 401 || response.status === 403) && !endpoint.includes('/auth/login')) {
                 try {
                     window.cookies.remove('user');
                 } catch (e) {

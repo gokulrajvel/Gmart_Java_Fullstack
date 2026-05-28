@@ -50,9 +50,24 @@ export function initNotificationSocket() {
             }
         });
 
-    }, function (error) {
-        console.error('Notification System WebSocket error. Retrying in 5 seconds...', error);
-        setTimeout(initNotificationSocket, 5000); // Retry reconnecting
+    }, async function (error) {
+        console.error('Notification System WebSocket error. Checking session status...', error);
+        try {
+            // Check if the session is still valid. If it has ended, api.js will handle redirecting to login.
+            if (window.api && typeof window.api.checkSessionStatus === 'function') {
+                await window.api.checkSessionStatus();
+            }
+            // If the session is valid but WebSocket failed (e.g. temporary network issue), retry connecting
+            setTimeout(initNotificationSocket, 5000);
+        } catch (e) {
+            console.error('Session validation failed during WebSocket error handling:', e);
+            // Fallback: if the session check threw an unauthorized/forbidden error without redirecting, redirect manually
+            if (e.message && (e.message.includes('401') || e.message.includes('403'))) {
+                window.location.href = 'index.html';
+            } else {
+                setTimeout(initNotificationSocket, 5000);
+            }
+        }
     });
 }
 
