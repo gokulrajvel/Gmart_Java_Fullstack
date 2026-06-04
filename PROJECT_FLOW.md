@@ -77,8 +77,8 @@ Gmart_Full_Stack/
     * Maps `/ws` SockJS endpoint.
     * Binds a client inbound channel interceptor to parse the `Authorization` header during a STOMP `CONNECT` frame, verifying connection credentials against `JwtTokenProvider` before allowing subscriptions.
 * **[ActiveSessionRegistry.java](file:///home/pain/IdeaProjects/Gmart_Full_Stack/backend/src/main/java/com/gokulrajvel/gmart/config/ActiveSessionRegistry.java)**
-  * **Role**: Manages active user session tokens in a thread-safe `ConcurrentHashMap`.
-  * **Key Details**: Tracks `username -> clientTokenUuid` mappings. If a user logs in on a different browser, it triggers a WebSocket broadcast (`action: logout`) over `/queue/notifications` to eject the older browser instance, ensuring single concurrent session enforcement.
+  * **Role**: Manages active user session tokens in Redis.
+  * **Key Details**: Tracks `gmart:session:<username> -> clientTokenUuid` mappings in Redis. If a user logs in on a different browser, it triggers a WebSocket broadcast (`action: logout`) over `/queue/notifications` to eject the older browser instance, ensuring single concurrent session enforcement.
 * **[SessionListener.java](file:///home/pain/IdeaProjects/Gmart_Full_Stack/backend/src/main/java/com/gokulrajvel/gmart/config/SessionListener.java)**
   * **Role**: Disabled. Lifecycle tracking is no longer used since sessions are stateless.
 * **[DatabaseSeeder.java](file:///home/pain/IdeaProjects/Gmart_Full_Stack/backend/src/main/java/com/gokulrajvel/gmart/config/DatabaseSeeder.java)**

@@ -5,6 +5,11 @@ services:
     build: ./backend
     ports:
       - "8080:8080"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
     restart: always
 
   frontend:
@@ -13,4 +18,10 @@ services:
       - "80:80"
     depends_on:
       - backend
+    restart: always
+
+  redis:
+    image: redis:7.0-alpine
+    ports:
+      - "6379:6379"
     restart: always
