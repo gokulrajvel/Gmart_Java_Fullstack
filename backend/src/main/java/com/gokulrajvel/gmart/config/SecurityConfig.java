@@ -8,6 +8,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -23,6 +24,14 @@ import java.util.Collections;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ActiveSessionRegistry activeSessionRegistry;
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ActiveSessionRegistry activeSessionRegistry) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.activeSessionRegistry = activeSessionRegistry;
+    }
 
     /**
      * Bean declaration for Password Hashing using BCrypt.
@@ -57,8 +66,8 @@ public class SecurityConfig {
 
     /**
      * Primary Security Configuration Filter Chain.
-     * Defines path authorization limits, registers stateful session details, 
-     * and sets up logout behaviors like invalidating session registries.
+     * Defines path authorization limits, registers stateless JWT settings, 
+     * and sets up logout behaviors like invalidating token registries.
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -73,31 +82,37 @@ public class SecurityConfig {
                 .requestMatchers("/", "/index.html", "/dashboard.html", "/css/**", "/js/**", "/assets/**", "/favicon.ico", "/error").permitAll()
                 // Permit anyone to hit login endpoints
                 .requestMatchers("/login", "/api/auth/login").permitAll()
-                // Require authenticated sessions for WebSockets and general API requests
-                .requestMatchers("/ws/**").authenticated()
+                // Permit WebSocket handshake (STOMP connection frames are validated programmatically inside WebSocketConfig)
+                .requestMatchers("/ws/**").permitAll()
                 .anyRequest().authenticated()
             )
             
-            // Stateful session settings utilizing standard session cookies
+            // Stateless session settings utilizing JWT tokens
             .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             
-            // Explicitly return 401 Unauthorized for unauthenticated API/WS requests instead of 403 Forbidden
+            // Explicitly return 401 Unauthorized for unauthenticated API requests instead of 403 Forbidden
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
                     response.setContentType("application/json");
-                    response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"Session has expired or is invalid.\"}");
+                    response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"Token has expired or is invalid.\"}");
                 })
             )
             
-            // Logout definitions (invalidates HTTP session, clears Security Context, and removes JSESSIONID cookie)
+            // Add JWT filter before UsernamePasswordAuthenticationFilter
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            
+            // Logout definitions (clears Security Context and invalidates the session in registry)
             .logout(logout -> logout
                 .logoutUrl("/api/auth/logout")
-                .invalidateHttpSession(true)
+                .addLogoutHandler((request, response, authentication) -> {
+                    if (authentication != null && authentication.getName() != null) {
+                        activeSessionRegistry.removeSession(authentication.getName());
+                    }
+                })
                 .clearAuthentication(true)
-                .deleteCookies("JSESSIONID")
                 .permitAll()
             );
 

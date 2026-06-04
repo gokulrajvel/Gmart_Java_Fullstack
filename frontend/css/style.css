@@ -1026,6 +1026,212 @@ tr:hover td {
     transform: translateY(-2px);
 }
 
+/* Stock Manager & Filter Improvements */
+.stock-manager-card {
+    border-left: 4px solid var(--success) !important;
+    background: var(--bg-card);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+}
 
+.stock-manager-card:hover {
+    box-shadow: 0 12px 24px rgba(0,0,0,0.4), 0 0 15px rgba(16, 185, 129, 0.05);
+}
 
+.stock-manager-form {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    width: 100%;
+}
 
+.stock-manager-group {
+    margin-bottom: 0 !important;
+}
+
+.stock-manager-group.flex-1 {
+    flex: 1 1 140px;
+}
+
+.stock-manager-group.flex-2 {
+    flex: 2 1 180px;
+}
+
+.stock-manager-group.flex-qty {
+    flex: 1 1 100px;
+}
+
+.stock-manager-group label {
+    font-size: 0.8rem;
+    margin-bottom: 0.4rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.stock-manager-input, .stock-manager-select {
+    padding: 0.65rem 1rem !important;
+    border-radius: 0.5rem !important;
+    height: 42px;
+}
+
+.stock-manager-btn {
+    height: 42px;
+    padding: 0 1.5rem !important;
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--success) 0%, #047857 100%) !important;
+    box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.25) !important;
+}
+
+.stock-manager-btn:hover {
+    box-shadow: 0 6px 20px 0 rgba(16, 185, 129, 0.4) !important;
+    transform: translateY(-1px);
+}
+
+/* Search and Filter Styling */
+.inventory-filters-card {
+    display: flex;
+    gap: 1.25rem;
+    align-items: center;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    flex-direction: row;
+    border-left: 4px solid var(--primary) !important;
+    background: var(--bg-card);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+}
+
+.inventory-filters-card:hover {
+    box-shadow: var(--stat-hover-shadow);
+}
+
+.filter-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    padding: 0.25rem 1rem;
+    border-radius: 0.75rem;
+    transition: var(--transition);
+}
+
+.filter-input-wrapper.flex-2 {
+    flex: 2 1 220px;
+}
+
+.filter-input-wrapper.flex-1 {
+    flex: 1 1 160px;
+}
+
+.filter-input-wrapper:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+    background: var(--bg-input-focus);
+}
+
+.filter-input-wrapper i {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    transition: var(--transition);
+}
+
+.filter-input-wrapper:focus-within i {
+    color: var(--primary);
+}
+
+.filter-inner-input {
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    color: var(--text-main);
+    width: 100%;
+    padding: 0.5rem 0 !important;
+    box-shadow: none !important;
+}
+
+.filter-inner-select {
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    color: var(--text-main);
+    width: 100%;
+    cursor: pointer;
+    padding: 0.5rem 0 !important;
+    box-shadow: none !important;
+}
+
+/* Skeleton Loading Effects */
+.skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    display: inline-block;
+}
+
+:root[data-theme="light"] .skeleton {
+    background-color: rgba(15, 23, 42, 0.06);
+}
+
+.skeleton::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.05) 20%,
+        rgba(255, 255, 255, 0.12) 60%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    animation: skeleton-shimmer 1.5s infinite;
+    content: '';
+}
+
+:root[data-theme="light"] .skeleton::after {
+    background-image: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.4) 20%,
+        rgba(255, 255, 255, 0.6) 60%,
+        rgba(255, 255, 255, 0) 100%
+    );
+}
+
+@keyframes skeleton-shimmer {
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.skeleton-line {
+    width: 80%;
+    height: 1.1rem;
+    margin: 0.25rem 0;
+}
+
+.skeleton-text {
+    width: 100%;
+    height: 100%;
+}
+
+.skeleton-row td {
+    padding: 1rem 1.5rem;
+}
+
+/* Ensure we don't have hover effects or pointers for skeleton rows */
+tr.skeleton-row:hover {
+    background: transparent !important;
+    cursor: default !important;
+}

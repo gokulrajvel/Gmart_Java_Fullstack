@@ -14,6 +14,8 @@ public class StockAlertNotificationService {
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
+    private final java.util.Set<String> alertedSkuCodes = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
     public StockAlertNotificationService(UserRepository userRepository, SimpMessagingTemplate messagingTemplate) {
         this.userRepository = userRepository;
         this.messagingTemplate = messagingTemplate;
@@ -23,22 +25,31 @@ public class StockAlertNotificationService {
      * Checks stock quantity and pushes alerts to active ADMIN and PURCHASING_MANAGER users.
      */
     public void checkAndSendStockAlert(String skuCode, String productName, int currentStock, int minThreshold) {
+        if (skuCode == null) {
+            return;
+        }
         if (currentStock <= minThreshold) {
-            // Find all users who are ADMIN or PURCHASING_MANAGER
-            List<User> targetUsers = userRepository.findAll().stream()
-                    .filter(u -> u.getRole() == Role.ADMIN || u.getRole() == Role.PURCHASING_MANAGER)
-                    .toList();
+            // Only send stock warning once, removing repeated alerts for the same SKU
+            if (alertedSkuCodes.add(skuCode)) {
+                // Find all users who are ADMIN or PURCHASING_MANAGER
+                List<User> targetUsers = userRepository.findAll().stream()
+                        .filter(u -> u.getRole() == Role.ADMIN || u.getRole() == Role.PURCHASING_MANAGER)
+                        .toList();
 
-            StockAlertPayload payload = new StockAlertPayload(skuCode, productName, currentStock);
+                StockAlertPayload payload = new StockAlertPayload(skuCode, productName, currentStock);
 
-            for (User user : targetUsers) {
-                // Spring handles routing this unicast message dynamically to the target user's session queue
-                messagingTemplate.convertAndSendToUser(
-                    user.getUsername(),
-                    "/queue/notifications",
-                    payload
-                );
+                for (User user : targetUsers) {
+                    // Spring handles routing this unicast message dynamically to the target user's session queue
+                    messagingTemplate.convertAndSendToUser(
+                        user.getUsername(),
+                        "/queue/notifications",
+                        payload
+                    );
+                }
             }
+        } else {
+            // Once stock is back above threshold, remove SKU from the alerted set so warnings can fire again later
+            alertedSkuCodes.remove(skuCode);
         }
     }
 

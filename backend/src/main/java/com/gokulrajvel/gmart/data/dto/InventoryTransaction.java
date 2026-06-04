@@ -26,6 +26,9 @@ public class InventoryTransaction {
     @Temporal(TemporalType.TIMESTAMP)
     private Date transactionDate = new Date();
 
+    @Column(name = "notes")
+    private String notes;
+
     public InventoryTransaction() {}
 
     public InventoryTransaction(int productId, int userId, String transactionType, int quantity) {
@@ -35,13 +38,22 @@ public class InventoryTransaction {
         this.quantity = quantity;
     }
 
-    public InventoryTransaction(int id, int productId, int userId, String transactionType, int quantity, Date transactionDate) {
+    public InventoryTransaction(int productId, int userId, String transactionType, int quantity, String notes) {
+        this.productId = productId;
+        this.userId = userId;
+        this.transactionType = transactionType;
+        this.quantity = quantity;
+        this.notes = notes;
+    }
+
+    public InventoryTransaction(int id, int productId, int userId, String transactionType, int quantity, Date transactionDate, String notes) {
         this.id = id;
         this.productId = productId;
         this.userId = userId;
         this.transactionType = transactionType;
         this.quantity = quantity;
         this.transactionDate = transactionDate;
+        this.notes = notes;
     }
 
     public int getId() { return id; }
@@ -61,4 +73,7 @@ public class InventoryTransaction {
 
     public Date getTransactionDate() { return transactionDate; }
     public void setTransactionDate(Date transactionDate) { this.transactionDate = transactionDate; }
+
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
 }

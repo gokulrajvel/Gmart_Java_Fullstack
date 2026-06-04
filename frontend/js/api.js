@@ -12,31 +12,8 @@ const BASE_URL = '/api';
  * Minimizes flickering using delay thresholds.
  */
 const loader = {
-    showTimeout: null,
-    activeRequests: 0,
-    
-    show(message = 'Processing request...') {
-        this.activeRequests++;
-        if (this.activeRequests === 1) {
-            const textEl = document.getElementById('globalLoaderText');
-            if (textEl) textEl.textContent = message;
-            
-            clearTimeout(this.showTimeout);
-            this.showTimeout = setTimeout(() => {
-                const el = document.getElementById('globalLoader');
-                if (el) el.classList.add('active');
-            }, 250); // Delay showing loader by 250ms to prevent flickers on fast connections
-        }
-    },
-    
-    hide() {
-        this.activeRequests = Math.max(0, this.activeRequests - 1);
-        if (this.activeRequests === 0) {
-            clearTimeout(this.showTimeout);
-            const el = document.getElementById('globalLoader');
-            if (el) el.classList.remove('active');
-        }
-    }
+    show(message = 'Processing request...') {},
+    hide() {}
 };
 
 /**
@@ -50,12 +27,17 @@ const loader = {
  * @returns {Promise<object>} Parsed JSON response object
  */
 async function apiRequest(endpoint, method = 'GET', body = null, showLoader = true) {
+    const token = sessionStorage.getItem('clientToken');
     const options = {
         method,
         headers: {
             'Content-Type': 'application/json'
         }
     };
+
+    if (token) {
+        options.headers['Authorization'] = `Bearer ${token}`;
+    }
 
     if (body) {
         options.body = JSON.stringify(body);
@@ -107,6 +89,7 @@ async function apiRequest(endpoint, method = 'GET', body = null, showLoader = tr
  */
 const api = {
     login: (credentials) => apiRequest('/auth/login', 'POST', credentials),
+    logout: () => apiRequest('/auth/logout', 'POST'),
     checkSessionStatus: () => apiRequest('/auth/status', 'GET', null, false),
     
     // Products

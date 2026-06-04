@@ -29,8 +29,9 @@ function getSessionUser() {
 function removeSessionUser() {
     try {
         window.cookies.remove('user');
+        sessionStorage.removeItem('clientToken');
     } catch (e) {
-        console.warn('Cookies are not accessible:', e);
+        console.warn('Cookies/Session storage is not accessible:', e);
     }
 }
 
@@ -109,6 +110,7 @@ function applyRBAC(role) {
         'nav-overview': ['ADMIN', 'BILLING_STAFF', 'WAREHOUSE', 'PURCHASING_MANAGER'],
         'nav-inventory': ['ADMIN', 'BILLING_STAFF', 'WAREHOUSE', 'PURCHASING_MANAGER'],
         'nav-suppliers': ['ADMIN', 'PURCHASING_MANAGER'],
+        'nav-reports': ['ADMIN', 'PURCHASING_MANAGER'],
         'nav-users': ['ADMIN'],
         'nav-billing': ['ADMIN', 'BILLING_STAFF'],
         'nav-transactions': ['ADMIN', 'WAREHOUSE']
@@ -143,6 +145,7 @@ function showSection(sectionId) {
         overview: 'Dashboard Overview',
         inventory: 'Inventory & Stock',
         suppliers: 'Vendor Directory',
+        reports: 'Sales Analytics & Reports',
         users: 'Employee Management',
         billing: 'Point of Sale',
         transactions: 'Movement History'
@@ -154,6 +157,7 @@ function showSection(sectionId) {
 
 let currentCart = [];
 let pendingBillData = null;
+let loadedBills = [];
 
 async function addToCartBySku() {
     const skuInput = document.getElementById('billingSkuInput');
@@ -394,10 +398,11 @@ async function executeCheckout() {
 
     // Build the final bill payload including employee/user metadata
     const finalBill = {
-        employeeId: user.id,
-        employeeName: user.name,
+        userId: user.id,
+        totalAmount: pendingBillData.totalAmount,
+        taxAmount: pendingBillData.taxAmount,
         paymentMethod: pendingBillData.paymentMethod,
-        billDetails: pendingBillData.billItems
+        billItems: pendingBillData.billItems
     };
 
     // Store a copy of currentCart locally in case we clear it before loop finishes
@@ -439,6 +444,35 @@ async function executeCheckout() {
     }
 }
 
+function showTableSkeleton(selector, colCount, rowCount = 5) {
+    const tbody = document.querySelector(selector);
+    if (!tbody) return;
+    
+    let rowsHtml = '';
+    for (let i = 0; i < rowCount; i++) {
+        rowsHtml += `
+            <tr class="skeleton-row">
+                ${Array(colCount).fill(0).map(() => `
+                    <td>
+                        <div class="skeleton skeleton-line"></div>
+                    </td>
+                `).join('')}
+            </tr>
+        `;
+    }
+    tbody.innerHTML = rowsHtml;
+}
+
+function showStatsSkeleton() {
+    const statIds = ['totalProducts', 'totalCategories', 'lowStockCount', 'outOfStockCount', 'totalSuppliers', 'totalTransactions'];
+    statIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.innerHTML = `<span class="skeleton skeleton-text" style="width: 3rem; height: 1.5rem; border-radius: 4px;"></span>`;
+        }
+    });
+}
+
 async function loadSectionData(sectionId) {
     try {
         switch(sectionId) {
@@ -446,6 +480,7 @@ async function loadSectionData(sectionId) {
             case 'inventory': await loadInventory(); break;
             case 'users': await loadUsers(); break;
             case 'suppliers': await loadSuppliers(); break;
+            case 'reports': await loadReports(); break;
             case 'transactions': await loadTransactions(); break;
         }
     } catch (e) {
@@ -454,70 +489,39 @@ async function loadSectionData(sectionId) {
 }
 
 async function updateStats() {
+    showStatsSkeleton();
     const [products, suppliers, transactions] = await Promise.all([
         api.getProducts(),
         api.getSuppliers(),
         api.getTransactions()
     ]);
     
+    const uniqueCategories = new Set(products.map(p => p.categoryId).filter(id => id !== null && id !== undefined));
+    
     document.getElementById('totalProducts').textContent = products.length;
-    document.getElementById('lowStockCount').textContent = products.filter(p => p.stockQuantity < 10).length;
+    document.getElementById('totalCategories').textContent = uniqueCategories.size;
+    document.getElementById('lowStockCount').textContent = products.filter(p => p.stockQuantity > 0 && p.stockQuantity < 10).length;
+    document.getElementById('outOfStockCount').textContent = products.filter(p => p.stockQuantity === 0).length;
     document.getElementById('totalSuppliers').textContent = suppliers.length;
     document.getElementById('totalTransactions').textContent = transactions.length;
 }
 
-async function loadInventory() {
+function renderProductTable(productsToRender, supplierMap) {
     const tbody = document.querySelector('#productTable tbody');
-    const [products, suppliers] = await Promise.all([
-        api.getProducts(),
-        api.getSuppliers()
-    ]);
+    if (!tbody) return;
     
-    window.allProductsList = products;
-
     const user = getSessionUser();
     const isAdmin = user && user.role === 'ADMIN';
     const isBillingStaff = user && user.role === 'BILLING_STAFF';
 
-    // Hide or show New Product button based on ADMIN role
-    const newProductBtn = document.getElementById('newProductBtn');
-    if (newProductBtn) {
-        newProductBtn.style.display = isAdmin ? 'block' : 'none';
-    }
+    const categoryNames = {
+        0: 'GROCERIES',
+        1: 'HOUSEHOLD_ITEMS',
+        2: 'APPAREL',
+        3: 'ELECTRONICS'
+    };
 
-    const supplierMap = {};
-    suppliers.forEach(s => {
-        supplierMap[s.id] = s.name;
-    });
-
-    const thead = document.querySelector('#productTable thead');
-    if (thead) {
-        if (isBillingStaff) {
-            thead.innerHTML = `
-                <tr>
-                    <th>SKU</th>
-                    <th>Name</th>
-                    <th>Amount</th>
-                </tr>
-            `;
-        } else {
-            thead.innerHTML = `
-                <tr>
-                    <th>SKU</th>
-                    <th>Name</th>
-                    <th>Supplier</th>
-                    <th>Price</th>
-                    <th>Discount</th>
-                    <th>GST</th>
-                    <th>Stock</th>
-                    <th>Status</th>
-                    <th style="text-align: right; padding-right: 2rem;">Actions</th>
-                </tr>
-            `;
-        }
-    }
-
-    tbody.innerHTML = products.map(p => {
+    tbody.innerHTML = productsToRender.map(p => {
         if (isBillingStaff) {
             return `
                 <tr>
@@ -529,6 +533,7 @@ async function loadInventory() {
         }
 
         const supplierName = supplierMap[p.supplierId] || `Supplier #${p.supplierId || 'N/A'}`;
+        const categoryName = categoryNames[p.categoryId] || 'N/A';
         
         const actionHtml = isAdmin 
             ? `<div style="display: inline-flex; gap: 0.5rem; align-items: center;">
@@ -541,18 +546,29 @@ async function loadInventory() {
                 <button class="btn btn-sm btn-danger" onclick="stockAdjust('${p.id}', -10)" title="Remove 10" style="background: transparent; border: 1px solid var(--danger); color: var(--danger); box-shadow: none;"><i class="fas fa-minus"></i></button>
                </div>`;
 
+        let statusClass = 'badge-success';
+        let statusText = 'Optimal';
+        if (p.stockQuantity === 0) {
+            statusClass = 'badge-danger';
+            statusText = 'Out of Stock';
+        } else if (p.stockQuantity < 10) {
+            statusClass = 'badge-warning';
+            statusText = 'Low Stock';
+        }
+
         return `
             <tr>
                 <td><strong style="color: var(--text-main);">${p.skuCode}</strong></td>
                 <td>${p.name}</td>
+                <td><span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border-color);">${categoryName}</span></td>
                 <td>${supplierName}</td>
                 <td>₹${p.price.toFixed(2)}</td>
                 <td>${p.discount ? p.discount.toFixed(1) : '0.0'}%</td>
                 <td>${p.gst ? p.gst.toFixed(1) : '0.0'}%</td>
                 <td>${p.stockQuantity}</td>
                 <td>
-                    <span class="badge ${p.stockQuantity < 10 ? 'badge-danger' : 'badge-success'}">
-                        ${p.stockQuantity < 10 ? 'Low Stock' : 'Optimal'}
+                    <span class="badge ${statusClass}">
+                        ${statusText}
                     </span>
                 </td>
                 <td style="text-align: right; padding-right: 2rem;">
@@ -561,6 +577,79 @@ async function loadInventory() {
             </tr>
         `;
     }).join('');
+}
+
+function filterInventory() {
+    const searchQuery = (document.getElementById('inventorySearchInput')?.value || '').toLowerCase();
+    const categoryFilter = document.getElementById('inventoryCategoryFilter')?.value || '';
+    
+    let filtered = window.allProductsList || [];
+    
+    if (searchQuery) {
+        filtered = filtered.filter(p => 
+            p.name.toLowerCase().includes(searchQuery) || 
+            p.skuCode.toLowerCase().includes(searchQuery)
+        );
+    }
+    
+    if (categoryFilter !== '') {
+        const catId = parseInt(categoryFilter);
+        filtered = filtered.filter(p => p.categoryId === catId);
+    }
+    
+    renderProductTable(filtered, window.currentSupplierMap || {});
+}
+
+async function loadInventory() {
+    showTableSkeleton('#productTable tbody', 10, 5);
+    const [products, suppliers] = await Promise.all([
+        api.getProducts(),
+        api.getSuppliers()
+    ]);
+    
+    window.allProductsList = products;
+
+    const user = getSessionUser();
+    const isAdmin = user && user.role === 'ADMIN';
+
+    // Hide or show New Product button based on ADMIN role
+    const newProductBtn = document.getElementById('newProductBtn');
+    if (newProductBtn) {
+        newProductBtn.style.display = isAdmin ? 'block' : 'none';
+    }
+
+    const supplierMap = {};
+    suppliers.forEach(s => {
+        supplierMap[s.id] = s.name;
+    });
+    window.currentSupplierMap = supplierMap;
+
+    // Populate Stock Manager products dropdown
+    const txProductSelect = document.getElementById('txProduct');
+    if (txProductSelect) {
+        txProductSelect.innerHTML = '<option value="" disabled selected>Choose a product...</option>' +
+            products.map(p => `<option value="${p.id}">${p.name} (SKU: ${p.skuCode})</option>`).join('');
+    }
+
+    // Set up search and filter listeners once
+    const searchInput = document.getElementById('inventorySearchInput');
+    const catFilter = document.getElementById('inventoryCategoryFilter');
+    
+    if (searchInput && !searchInput.dataset.listenerAttached) {
+        searchInput.addEventListener('input', filterInventory);
+        searchInput.dataset.listenerAttached = 'true';
+    }
+    
+    if (catFilter && !catFilter.dataset.listenerAttached) {
+        catFilter.addEventListener('change', filterInventory);
+        catFilter.dataset.listenerAttached = 'true';
+    }
+
+    // Reset search/filter inputs on reload
+    if (searchInput) searchInput.value = '';
+    if (catFilter) catFilter.value = '';
+
+    renderProductTable(products, supplierMap);
 }
 
 async function stockAdjust(productId, change) {
@@ -585,6 +674,7 @@ async function stockAdjust(productId, change) {
 let usersList = [];
 
 async function loadUsers() {
+    showTableSkeleton('#userTable tbody', 7, 4);
     const tbody = document.querySelector('#userTable tbody');
     usersList = await api.getUsers();
     
@@ -663,6 +753,7 @@ function openEditUserModal(userId) {
 let suppliersList = [];
 
 async function loadSuppliers() {
+    showTableSkeleton('#supplierTable tbody', 4, 4);
     const tbody = document.querySelector('#supplierTable tbody');
     suppliersList = await api.getSuppliers();
     
@@ -711,6 +802,7 @@ function editSupplier(id) {
 }
 
 async function loadTransactions() {
+    showTableSkeleton('#transactionTable tbody', 6, 6);
     const tbody = document.querySelector('#transactionTable tbody');
     const [logs, products] = await Promise.all([
         api.getTransactions(),
@@ -735,6 +827,7 @@ async function loadTransactions() {
                     </span>
                 </td>
                 <td><strong style="color: var(--text-main);">${l.quantity}</strong></td>
+                <td><span style="font-size: 0.9rem; color: var(--text-muted);">${l.notes || '—'}</span></td>
             </tr>
         `;
     }).join('');
@@ -757,6 +850,7 @@ function openNewProductModal() {
     document.getElementById('p_id').value = '';
     document.getElementById('sku').value = '';
     document.getElementById('pname').value = '';
+    document.getElementById('pcategory').value = '';
     document.getElementById('price').value = '';
     document.getElementById('pdiscount').value = 0;
     document.getElementById('pgst').value = 0;
@@ -787,6 +881,7 @@ async function openEditProductModal(productId) {
     document.getElementById('p_id').value = product.id;
     document.getElementById('sku').value = product.skuCode;
     document.getElementById('pname').value = product.name;
+    document.getElementById('pcategory').value = product.categoryId !== null && product.categoryId !== undefined ? product.categoryId : '';
     document.getElementById('price').value = product.price;
     document.getElementById('pdiscount').value = product.discount || 0;
     document.getElementById('pgst').value = product.gst || 0;
@@ -825,9 +920,11 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
     }
     const idVal = document.getElementById('p_id').value;
     const supplierSelect = document.getElementById('psupplier');
+    const categoryVal = document.getElementById('pcategory').value;
     const product = {
         skuCode: document.getElementById('sku').value,
         name: document.getElementById('pname').value,
+        categoryId: categoryVal ? parseInt(categoryVal) : null,
         price: parseFloat(document.getElementById('price').value),
         discount: parseFloat(document.getElementById('pdiscount').value || 0),
         gst: parseFloat(document.getElementById('pgst').value || 0),
@@ -844,9 +941,48 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
         showToast(idVal ? 'Product updated successfully' : 'Product added to catalog');
         hideModal('productModal');
         loadInventory();
+        updateStats();
         e.target.reset();
     } catch (e) { showToast(e.message, 'error'); }
 });
+
+// Quick Stock Transaction Form (Stock Manager)
+const quickTxForm = document.getElementById('quickTransactionForm');
+if (quickTxForm) {
+    quickTxForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const user = getSessionUser();
+        const productId = parseInt(document.getElementById('txProduct').value);
+        const type = document.getElementById('txType').value;
+        const qty = parseInt(document.getElementById('txQuantity').value);
+        const notes = document.getElementById('txNotes').value;
+        
+        if (!productId || qty <= 0) {
+            showToast('Please select a valid product and enter quantity', 'error');
+            return;
+        }
+        
+        const transaction = {
+            productId: productId,
+            userId: user ? user.id : null,
+            transactionType: type,
+            quantity: qty,
+            notes: notes || null
+        };
+        
+        try {
+            await api.recordTransaction(transaction);
+            showToast('Stock transaction recorded successfully');
+            document.getElementById('txQuantity').value = '';
+            document.getElementById('txNotes').value = '';
+            document.getElementById('txProduct').value = '';
+            loadInventory();
+            updateStats();
+        } catch (err) {
+            showToast('Failed to record transaction: ' + err.message, 'error');
+        }
+    });
+}
 
 document.getElementById('userForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -892,7 +1028,12 @@ document.getElementById('supplierForm').addEventListener('submit', async (e) => 
     } catch (e) { showToast(e.message, 'error'); }
 });
 
-function logout() {
+async function logout() {
+    try {
+        await api.logout();
+    } catch (e) {
+        console.warn('Backend logout failed:', e);
+    }
     removeSessionUser();
     window.location.href = 'index.html';
 }
@@ -930,3 +1071,234 @@ window.openNewProductModal = openNewProductModal;
 window.openEditProductModal = openEditProductModal;
 window.hideModal = hideModal;
 window.logout = logout;
+
+// Sales Report & Export functions
+async function loadReports() {
+    // Select default dates if not already selected
+    const dailyInput = document.getElementById('reportDailyDate');
+    const monthlyInput = document.getElementById('reportMonthlyMonth');
+    
+    if (dailyInput && !dailyInput.value) {
+        dailyInput.value = new Date().toISOString().split('T')[0];
+    }
+    if (monthlyInput && !monthlyInput.value) {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        monthlyInput.value = `${year}-${month}`;
+    }
+
+    // Load recent bills preview
+    try {
+        showTableSkeleton('#reportsPreviewTable tbody', 7, 5);
+        const bills = await api.getBills();
+        loadedBills = bills;
+        renderReportsPreview(bills);
+    } catch (e) {
+        showToast('Failed to load sales data: ' + e.message, 'error');
+    }
+}
+
+function renderReportsPreview(bills) {
+    const tbody = document.querySelector('#reportsPreviewTable tbody');
+    if (!tbody) return;
+
+    if (!bills || bills.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No sales records found in the system.</td></tr>`;
+        return;
+    }
+
+    // Sort bills by date descending
+    const sorted = [...bills].sort((a, b) => new Date(b.billDate) - new Date(a.billDate));
+
+    tbody.innerHTML = sorted.slice(0, 10).map(b => {
+        const dateStr = new Date(b.billDate).toLocaleString();
+        const itemsCount = b.items ? b.items.reduce((sum, item) => sum + item.quantity, 0) : 0;
+        return `
+            <tr onclick="showBillDetails(${b.id})" style="cursor: pointer;">
+                <td><strong>#${b.id}</strong></td>
+                <td style="color: var(--text-muted); font-size: 0.85rem;">${dateStr}</td>
+                <td><span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border-color);">${b.paymentMethod || 'CASH'}</span></td>
+                <td>${itemsCount}</td>
+                <td>₹${b.taxAmount.toFixed(2)}</td>
+                <td><strong style="color: var(--success);">₹${b.totalAmount.toFixed(2)}</strong></td>
+                <td>
+                    <button class="btn btn-primary" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; min-width: auto; height: auto;" onclick="event.stopPropagation(); showBillDetails(${b.id});">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('') + (sorted.length > 10 ? `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 0.75rem;">Showing recent 10 transactions. Use the download buttons to get full details.</td></tr>` : '');
+}
+
+function showBillDetails(billId) {
+    const bill = loadedBills.find(b => b.id === billId);
+    if (!bill) {
+        showToast('Bill details not found', 'error');
+        return;
+    }
+
+    const titleEl = document.getElementById('billDetailsTitle');
+    if (titleEl) {
+        titleEl.innerHTML = `<i class="fas fa-receipt" style="color: var(--success); margin-right: 0.5rem;"></i> Bill Details - #${bill.id}`;
+    }
+
+    const metadataEl = document.getElementById('billDetailsMetadata');
+    if (metadataEl) {
+        const dateStr = new Date(bill.billDate).toLocaleString();
+        metadataEl.innerHTML = `
+            <div><strong>Date & Time:</strong> ${dateStr}</div>
+            <div><strong>Payment Method:</strong> <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border-color);">${bill.paymentMethod || 'CASH'}</span></div>
+            <div><strong>Staff ID / User ID:</strong> #${bill.userId}</div>
+        `;
+    }
+
+    const tbody = document.querySelector('#billDetailsItemsTable tbody');
+    if (tbody) {
+        if (!bill.items || bill.items.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No items recorded in this bill.</td></tr>`;
+        } else {
+            tbody.innerHTML = bill.items.map(item => {
+                const price = item.priceAtSale || 0;
+                const qty = item.quantity || 0;
+                const itemTotal = price * qty;
+                return `
+                    <tr>
+                        <td style="font-weight: 500;">${item.productName || 'Unknown Product (#' + item.productId + ')'}</td>
+                        <td>${qty}</td>
+                        <td>₹${price.toFixed(2)}</td>
+                        <td><strong style="color: var(--text-main);">₹${itemTotal.toFixed(2)}</strong></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+
+    const summaryEl = document.getElementById('billDetailsSummary');
+    if (summaryEl) {
+        const taxVal = bill.taxAmount || 0;
+        const totalVal = bill.totalAmount || 0;
+        const subtotalVal = totalVal - taxVal;
+        summaryEl.innerHTML = `
+            <div class="flex-between" style="margin-bottom: 0.35rem; color: var(--text-muted);">
+                <span>Subtotal:</span>
+                <span>₹${subtotalVal.toFixed(2)}</span>
+            </div>
+            <div class="flex-between" style="margin-bottom: 0.35rem; color: var(--text-muted);">
+                <span>Tax Collected:</span>
+                <span>₹${taxVal.toFixed(2)}</span>
+            </div>
+            <div class="flex-between" style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin-top: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
+                <span>Total Amount:</span>
+                <span style="color: var(--success);">₹${totalVal.toFixed(2)}</span>
+            </div>
+        `;
+    }
+
+    showModal('billDetailsModal');
+}
+
+async function downloadDailySalesReport() {
+    const dateVal = document.getElementById('reportDailyDate')?.value;
+    if (!dateVal) {
+        showToast('Please select a date first', 'error');
+        return;
+    }
+
+    try {
+        const bills = await api.getBills();
+        // Filter bills by the selected date (YYYY-MM-DD)
+        const dailyBills = bills.filter(b => {
+            const bDateStr = new Date(b.billDate).toISOString().split('T')[0];
+            return bDateStr === dateVal;
+        });
+
+        if (dailyBills.length === 0) {
+            showToast(`No sales recorded on ${dateVal}`, 'warning');
+            return;
+        }
+
+        generateCsvReport(dailyBills, `sales_report_daily_${dateVal}.csv`);
+        showToast(`Downloaded daily sales report for ${dateVal}`);
+    } catch (e) {
+        showToast('Failed to generate report: ' + e.message, 'error');
+    }
+}
+
+async function downloadMonthlySalesReport() {
+    const monthVal = document.getElementById('reportMonthlyMonth')?.value; // Format: YYYY-MM
+    if (!monthVal) {
+        showToast('Please select a month first', 'error');
+        return;
+    }
+
+    try {
+        const bills = await api.getBills();
+        // Filter bills by the selected month (YYYY-MM)
+        const monthlyBills = bills.filter(b => {
+            const bDateStr = new Date(b.billDate).toISOString().split('T')[0].substring(0, 7);
+            return bDateStr === monthVal;
+        });
+
+        if (monthlyBills.length === 0) {
+            showToast(`No sales recorded in ${monthVal}`, 'warning');
+            return;
+        }
+
+        generateCsvReport(monthlyBills, `sales_report_monthly_${monthVal}.csv`);
+        showToast(`Downloaded monthly sales report for ${monthVal}`);
+    } catch (e) {
+        showToast('Failed to generate report: ' + e.message, 'error');
+    }
+}
+
+function generateCsvReport(bills, filename) {
+    const headers = [
+        'Bill ID',
+        'Timestamp',
+        'User ID (Employee)',
+        'Payment Method',
+        'Tax Amount (INR)',
+        'Total Amount (INR)',
+        'Items Detail'
+    ];
+
+    const csvRows = [headers.join(',')];
+
+    bills.forEach(b => {
+        const dateStr = new Date(b.billDate).toISOString().replace('T', ' ').substring(0, 19);
+        const itemsDetail = b.items ? b.items.map(i => `${i.productName || 'Prod#' + i.productId} (${i.quantity} x Rs.${i.priceAtSale})`).join(' | ') : '';
+        
+        // Escape quotes in CSV
+        const escapedItemsDetail = itemsDetail.replace(/"/g, '""');
+        
+        const row = [
+            b.id,
+            `"${dateStr}"`,
+            b.userId,
+            b.paymentMethod || 'CASH',
+            b.taxAmount.toFixed(2),
+            b.totalAmount.toFixed(2),
+            `"${escapedItemsDetail}"`
+        ];
+        csvRows.push(row.join(','));
+    });
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+window.loadReports = loadReports;
+window.downloadDailySalesReport = downloadDailySalesReport;
+window.downloadMonthlySalesReport = downloadMonthlySalesReport;
+window.showBillDetails = showBillDetails;

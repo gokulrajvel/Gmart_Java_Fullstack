@@ -53,4 +53,17 @@ public class BillTest {
         assertEquals(12.5, bill.getTaxAmount());
         assertNotNull(bill.getBillDate());
     }
+
+    @Test
+    public void testJacksonSerialization() throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        String json = "{\"userId\":1,\"totalAmount\":100.0,\"taxAmount\":5.0,\"paymentMethod\":\"CASH\",\"billItems\":[{\"productId\":1,\"productName\":\"Test\",\"quantity\":2,\"priceAtSale\":50.0}]}";
+        Bill bill = mapper.readValue(json, Bill.class);
+        assertEquals(1, bill.getUserId());
+        assertEquals(100.0, bill.getTotalAmount());
+        assertEquals(5.0, bill.getTaxAmount());
+        assertEquals("CASH", bill.getPaymentMethod());
+        assertNotNull(bill.getItems());
+        assertEquals(1, bill.getItems().size());
+    }
 }

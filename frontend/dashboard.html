@@ -19,15 +19,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('ServiceWorker registered successfully:', reg.scope))
+                    .catch(err => console.warn('ServiceWorker registration failed:', err));
+            });
+        }
+    </script>
 </head>
 <body>
-    <!-- Global Loading Overlay -->
-    <div id="globalLoader" class="loading-overlay">
-        <div class="loader-container">
-            <div class="premium-spinner"></div>
-            <div id="globalLoaderText" class="loader-text">Loading GMart...</div>
-        </div>
-    </div>
 
     <!-- Checkout Confirmation Modal -->
     <div id="checkoutConfirmModal" class="checkout-confirm-overlay">
@@ -84,6 +88,9 @@
                 <a id="nav-suppliers" class="nav-item" onclick="showSection('suppliers')">
                     <i class="fas fa-truck-ramp-box"></i> <span>Suppliers</span>
                 </a>
+                <a id="nav-reports" class="nav-item" onclick="showSection('reports')">
+                    <i class="fas fa-chart-pie"></i> <span>Reports</span>
+                </a>
                 <a id="nav-users" class="nav-item" onclick="showSection('users')">
                     <i class="fas fa-user-gear"></i> <span>Employees</span>
                 </a>
@@ -134,10 +141,24 @@
                     </div>
                     <div class="stat-card">
                         <div>
-                            <div class="stat-label">Critical Alerts</div>
-                            <div id="lowStockCount" class="stat-value" style="color: var(--danger);">0</div>
+                            <div class="stat-label">Total Categories</div>
+                            <div id="totalCategories" class="stat-value">0</div>
                         </div>
-                        <i class="fas fa-triangle-exclamation" style="position: absolute; right: 1.5rem; bottom: 1.5rem; font-size: 2.25rem; opacity: 0.15; color: var(--danger);"></i>
+                        <i class="fas fa-tags" style="position: absolute; right: 1.5rem; bottom: 1.5rem; font-size: 2.25rem; opacity: 0.15; color: var(--primary);"></i>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <div class="stat-label">Critical Alerts</div>
+                            <div id="lowStockCount" class="stat-value" style="color: var(--warning);">0</div>
+                        </div>
+                        <i class="fas fa-triangle-exclamation" style="position: absolute; right: 1.5rem; bottom: 1.5rem; font-size: 2.25rem; opacity: 0.15; color: var(--warning);"></i>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <div class="stat-label">Out of Stock</div>
+                            <div id="outOfStockCount" class="stat-value" style="color: var(--danger);">0</div>
+                        </div>
+                        <i class="fas fa-circle-xmark" style="position: absolute; right: 1.5rem; bottom: 1.5rem; font-size: 2.25rem; opacity: 0.15; color: var(--danger);"></i>
                     </div>
                     <div class="stat-card">
                         <div>
@@ -168,18 +189,67 @@
 
             <!-- 2. Inventory Section -->
             <section id="inventorySection" class="hidden">
-                <div class="flex-between" style="margin-bottom: 1.5rem;">
-                    <h3><i class="fas fa-boxes-stacked" style="color: var(--primary);"></i> Product Catalog</h3>
+                <!-- Record Stock Transaction Panel (Stock Manager) -->
+                <div class="card stock-manager-card" style="margin-bottom: 2rem; padding: 1.5rem;">
+                    <h3 style="margin-top: 0; margin-bottom: 1.25rem; font-size: 1.15rem; font-weight: 700; color: var(--text-main);"><i class="fas fa-dolly" style="color: var(--success); margin-right: 0.5rem;"></i> Record Stock Transaction</h3>
+                    <form id="quickTransactionForm" class="stock-manager-form">
+                        <div class="form-group stock-manager-group flex-1">
+                            <label>Transaction Type</label>
+                            <select id="txType" class="stock-manager-select" required>
+                                <option value="INWARD">STOCK IN (INWARD)</option>
+                                <option value="OUTWARD">STOCK OUT (OUTWARD)</option>
+                            </select>
+                        </div>
+                        <div class="form-group stock-manager-group flex-2">
+                            <label>Select Product</label>
+                            <select id="txProduct" class="stock-manager-select" required>
+                                <option value="" disabled selected>Choose a product...</option>
+                            </select>
+                        </div>
+                        <div class="form-group stock-manager-group flex-qty">
+                            <label>Quantity</label>
+                            <input type="number" id="txQuantity" class="stock-manager-input" min="1" placeholder="e.g. 15" required>
+                        </div>
+                        <div class="form-group stock-manager-group flex-2">
+                            <label>Notes / Reason</label>
+                            <input type="text" id="txNotes" class="stock-manager-input" placeholder="e.g. Replenishment, customer returns">
+                        </div>
+                        <button type="submit" class="btn btn-primary stock-manager-btn"><i class="fas fa-check"></i> Submit</button>
+                    </form>
+                </div>
+
+                <div class="flex-between" style="margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                    <h3 style="margin-bottom: 0;"><i class="fas fa-boxes-stacked" style="color: var(--primary);"></i> Product Catalog</h3>
                     <button id="newProductBtn" class="btn btn-primary" onclick="openNewProductModal()">
                         <i class="fas fa-plus"></i> New Product
                     </button>
                 </div>
+
+                <!-- Search and Filter Controls -->
+                <div class="inventory-filters-card">
+                    <div class="filter-input-wrapper flex-2">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="inventorySearchInput" class="filter-inner-input" placeholder="Search by name or SKU...">
+                    </div>
+                    <div class="filter-input-wrapper flex-1">
+                        <i class="fas fa-filter"></i>
+                        <select id="inventoryCategoryFilter" class="filter-inner-select">
+                            <option value="" style="background: var(--bg-sidebar);">All Categories</option>
+                            <option value="0" style="background: var(--bg-sidebar);">GROCERIES</option>
+                            <option value="1" style="background: var(--bg-sidebar);">HOUSEHOLD_ITEMS</option>
+                            <option value="2" style="background: var(--bg-sidebar);">APPAREL</option>
+                            <option value="3" style="background: var(--bg-sidebar);">ELECTRONICS</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="card table-container" style="padding: 0;">
                     <table id="productTable">
                         <thead>
                             <tr>
                                 <th>SKU</th>
                                 <th>Name</th>
+                                <th>Category</th>
                                 <th>Supplier</th>
                                 <th>Price</th>
                                 <th>Discount</th>
@@ -326,10 +396,67 @@
                                 <th>Handled By</th>
                                 <th>Type</th>
                                 <th>Quantity</th>
+                                <th>Notes</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
                     </table>
+                </div>
+            </section>
+
+            <!-- 7. Reports Section -->
+            <section id="reportsSection" class="hidden">
+                <div class="reports-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                    <!-- Daily Sales Report Card -->
+                    <div class="card stock-manager-card" style="border-left: 4px solid var(--primary) !important; padding: 1.5rem;">
+                        <h3 style="margin-top: 0; margin-bottom: 1rem; color: var(--text-main);"><i class="fas fa-calendar-day" style="color: var(--primary); margin-right: 0.5rem;"></i> Daily Sales Report</h3>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">Generate and download a CSV report containing all sales transactions logged for a specific calendar day.</p>
+                        <div class="form-group" style="margin-bottom: 1.25rem;">
+                            <label style="font-size: 0.8rem; margin-bottom: 0.35rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Select Date</label>
+                            <input type="date" id="reportDailyDate" style="width: 100%;" required>
+                        </div>
+                        <button onclick="downloadDailySalesReport()" class="btn btn-primary" style="width: 100%; padding: 0.8rem; font-weight: 600;">
+                            <i class="fas fa-file-csv"></i> Download Daily Report
+                        </button>
+                    </div>
+
+                    <!-- Monthly Sales Report Card -->
+                    <div class="card stock-manager-card" style="border-left: 4px solid var(--warning) !important; padding: 1.5rem;">
+                        <h3 style="margin-top: 0; margin-bottom: 1rem; color: var(--text-main);"><i class="fas fa-calendar-week" style="color: var(--warning); margin-right: 0.5rem;"></i> Monthly Sales Report</h3>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">Generate and download a CSV report containing a summary of all sales transactions logged for a specific calendar month.</p>
+                        <div class="form-group" style="margin-bottom: 1.25rem;">
+                            <label style="font-size: 0.8rem; margin-bottom: 0.35rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Select Month</label>
+                            <input type="month" id="reportMonthlyMonth" style="width: 100%;" required>
+                        </div>
+                        <button onclick="downloadMonthlySalesReport()" class="btn btn-primary" style="width: 100%; padding: 0.8rem; font-weight: 600; background: linear-gradient(135deg, var(--warning) 0%, #b45309 100%); box-shadow: 0 4px 14px 0 rgba(217, 119, 6, 0.25);">
+                            <i class="fas fa-file-csv"></i> Download Monthly Report
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sales Statistics Overview Panel -->
+                <div class="card" style="padding: 1.5rem; margin-bottom: 2rem;">
+                    <h3 style="margin-top: 0; margin-bottom: 1.25rem; font-size: 1.15rem; font-weight: 700; color: var(--text-main);"><i class="fas fa-chart-bar" style="color: var(--success); margin-right: 0.5rem;"></i> Sales Summary & Preview</h3>
+                    <div class="table-container" style="padding: 0; border: 1px solid var(--border-color); border-radius: 0.5rem; overflow: hidden;">
+                        <table id="reportsPreviewTable">
+                            <thead>
+                                <tr>
+                                    <th>Bill ID</th>
+                                    <th>Date</th>
+                                    <th>Payment Method</th>
+                                    <th>Items Count</th>
+                                    <th>Tax Collected</th>
+                                    <th>Total Revenue</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No date range selected. Use the options above to download or view reports.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
         </main>
@@ -365,6 +492,16 @@
                 <div class="form-group">
                     <label for="stock">Initial Stock Quantity</label>
                     <input type="number" min="0" id="stock" value="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="pcategory">Category</label>
+                    <select id="pcategory" required style="width: 100%; padding: 0.5rem 0.75rem;">
+                        <option value="" disabled selected>Select Category</option>
+                        <option value="0">GROCERIES</option>
+                        <option value="1">HOUSEHOLD_ITEMS</option>
+                        <option value="2">APPAREL</option>
+                        <option value="3">ELECTRONICS</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="psupplier">Supplier</label>
@@ -442,6 +579,39 @@
                     <button type="submit" id="supplierSubmitBtn" class="btn btn-primary" style="flex: 1;">Save Vendor</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Bill Items Details Modal -->
+    <div id="billDetailsModal" class="modal-overlay" style="display: none;">
+        <div class="modal-card" style="max-width: 600px;">
+            <h3 id="billDetailsTitle" style="margin-top: 0; margin-bottom: 1.25rem; font-size: 1.25rem; font-weight: 700; color: var(--text-main); border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+                <i class="fas fa-receipt" style="color: var(--success); margin-right: 0.5rem;"></i> Bill Details
+            </h3>
+            <div id="billDetailsMetadata" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1.25rem; font-size: 0.85rem; color: var(--text-muted);">
+                <!-- Populated dynamically -->
+            </div>
+            <div class="table-container" style="padding: 0; border: 1px solid var(--border-color); border-radius: 0.5rem; overflow: hidden; margin-bottom: 1.25rem; max-height: 250px; overflow-y: auto;">
+                <table id="billDetailsItemsTable" style="margin-bottom: 0;">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="billDetailsSummary" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 1rem; font-size: 0.9rem; margin-bottom: 1.5rem;">
+                <!-- Populated dynamically -->
+            </div>
+            <div class="flex-between" style="gap: 1rem;">
+                <button type="button" class="btn btn-primary" onclick="hideModal('billDetailsModal')" style="flex: 1; padding: 0.8rem; font-weight: 600;">Close</button>
+            </div>
         </div>
     </div>
 

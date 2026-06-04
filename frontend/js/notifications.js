@@ -18,7 +18,8 @@ export function initNotificationSocket() {
     // Disable debug logging in production to keep console clean
     // stompClient.debug = null;
 
-    stompClient.connect({}, function (frame) {
+    const token = sessionStorage.getItem('clientToken');
+    stompClient.connect({ 'Authorization': 'Bearer ' + token }, function (frame) {
         console.log('Notification System: Connected via STOMP.');
 
         // Subscribe to user-specific queue
