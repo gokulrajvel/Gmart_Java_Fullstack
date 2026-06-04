@@ -5,12 +5,13 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Registry that keeps track of active user tokens in Redis.
- * Helps implement single-session concurrency control in a stateless JWT environment.
- * When a user logs in from a new device/browser, any existing session is automatically terminated.
+ * Registry that keeps track of active user tokens.
+ * Uses Redis as the primary store for distributed session concurrency control,
+ * but falls back gracefully to an in-memory ConcurrentHashMap if Redis is offline/unavailable.
  */
 @Component
 public class ActiveSessionRegistry {
@@ -21,13 +22,30 @@ public class ActiveSessionRegistry {
     // Redis prefix for active user session keys
     private static final String REDIS_PREFIX = "gmart:session:";
 
+    // Fallback in-memory map used when Redis is offline
+    private final Map<String, String> fallbackSessions = new ConcurrentHashMap<>();
+    private boolean isRedisAvailable = true;
+
     public ActiveSessionRegistry(SimpMessagingTemplate messagingTemplate, StringRedisTemplate redisTemplate) {
         this.messagingTemplate = messagingTemplate;
         this.redisTemplate = redisTemplate;
+        checkRedisAvailability();
+    }
+
+    private void checkRedisAvailability() {
+        try {
+            // Test connection factory
+            redisTemplate.getConnectionFactory().getConnection().ping();
+            isRedisAvailable = true;
+            System.out.println("Redis is ONLINE. Session registry will use Redis.");
+        } catch (Exception e) {
+            isRedisAvailable = false;
+            System.err.println("WARNING: Redis is OFFLINE. Falling back to in-memory session registry. Error: " + e.getMessage());
+        }
     }
     
     /**
-     * Registers a new client session for a user in Redis. If the user already has an active session on
+     * Registers a new client session for a user. If the user already has an active session on
      * a different browser or system, that previous session is invalidated via WebSocket broadcast.
      *
      * @param username    the name of the user logging in
@@ -38,11 +56,21 @@ public class ActiveSessionRegistry {
             return;
         }
         
-        String key = REDIS_PREFIX + username;
-        String oldClientToken = redisTemplate.opsForValue().get(key);
-        
-        // Save the active clientToken in Redis, expiring in 30 days
-        redisTemplate.opsForValue().set(key, clientToken, 30, TimeUnit.DAYS);
+        String oldClientToken = null;
+
+        if (isRedisAvailable) {
+            try {
+                String key = REDIS_PREFIX + username;
+                oldClientToken = redisTemplate.opsForValue().get(key);
+                redisTemplate.opsForValue().set(key, clientToken, 30, TimeUnit.DAYS);
+            } catch (Exception e) {
+                System.err.println("Redis communication failed during registerSession. Falling back to memory. Error: " + e.getMessage());
+                isRedisAvailable = false; // Disable Redis for subsequent calls
+                oldClientToken = fallbackSessions.put(username, clientToken);
+            }
+        } else {
+            oldClientToken = fallbackSessions.put(username, clientToken);
+        }
         
         // If an old session existed and represents a different clientToken, broadcast logout
         if (oldClientToken != null && !oldClientToken.equals(clientToken)) {
@@ -58,25 +86,50 @@ public class ActiveSessionRegistry {
     }
 
     /**
-     * Validates whether a given clientToken is currently active for the user in Redis.
+     * Validates whether a given clientToken is currently active for the user.
      */
     public boolean isSessionActive(String username, String clientToken) {
         if (username == null || clientToken == null) {
             return false;
         }
-        String key = REDIS_PREFIX + username;
-        String activeToken = redisTemplate.opsForValue().get(key);
-        return activeToken == null || activeToken.equals(clientToken);
+
+        if (isRedisAvailable) {
+            try {
+                String key = REDIS_PREFIX + username;
+                String activeToken = redisTemplate.opsForValue().get(key);
+                return activeToken == null || activeToken.equals(clientToken);
+            } catch (Exception e) {
+                System.err.println("Redis communication failed during isSessionActive. Falling back to memory. Error: " + e.getMessage());
+                isRedisAvailable = false; // Disable Redis for subsequent calls
+                String activeToken = fallbackSessions.get(username);
+                return activeToken == null || activeToken.equals(clientToken);
+            }
+        } else {
+            String activeToken = fallbackSessions.get(username);
+            return activeToken == null || activeToken.equals(clientToken);
+        }
     }
 
     /**
-     * Removes a user's session from the registry (invalidates it in Redis).
+     * Removes a user's session from the registry.
      *
      * @param username the user to remove
      */
     public void removeSession(String username) {
-        if (username != null) {
-            redisTemplate.delete(REDIS_PREFIX + username);
+        if (username == null) {
+            return;
+        }
+
+        if (isRedisAvailable) {
+            try {
+                redisTemplate.delete(REDIS_PREFIX + username);
+            } catch (Exception e) {
+                System.err.println("Redis communication failed during removeSession. Falling back to memory. Error: " + e.getMessage());
+                isRedisAvailable = false; // Disable Redis for subsequent calls
+                fallbackSessions.remove(username);
+            }
+        } else {
+            fallbackSessions.remove(username);
         }
     }
 }
